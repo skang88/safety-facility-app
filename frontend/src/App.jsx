@@ -1,7 +1,7 @@
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Map, LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard, ListChecks } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
-import MapView from './pages/MapView';
+import ListView from './pages/ListView';
 
 function App() {
   const location = useLocation();
@@ -26,13 +26,13 @@ function App() {
                 대시보드
               </Link>
               <Link
-                to="/map"
+                to="/list"
                 className={`flex items-center px-3 py-2 rounded-md text-sm font-medium ${
-                  location.pathname === '/map' ? 'bg-red-800 text-white' : 'text-red-100 hover:bg-red-600'
+                  location.pathname === '/list' ? 'bg-red-800 text-white' : 'text-red-100 hover:bg-red-600'
                 }`}
               >
-                <Map className="w-5 h-5 mr-1" />
-                지도보기
+                <ListChecks className="w-5 h-5 mr-1" />
+                점검 리스트
               </Link>
             </div>
           </div>
@@ -43,7 +43,7 @@ function App() {
       <main className="flex-1 overflow-hidden relative">
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/map" element={<MapView />} />
+          <Route path="/list" element={<ListView />} />
         </Routes>
       </main>
     </div>
