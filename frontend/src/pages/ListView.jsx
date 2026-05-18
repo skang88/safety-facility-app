@@ -220,7 +220,8 @@ export default function ListView() {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
 
           {filtered.length === 0 && (
             <div className="col-span-full py-16 flex flex-col items-center justify-center text-gray-500">
