@@ -76,6 +76,11 @@ export default function InspectionDetailModal({ inspection: initialInspection, o
               }
               return null;
             })()}
+            {inspection.facility?.location?.coordinates && (
+              <p className="text-[10px] text-gray-400 mt-0.5 font-mono">
+                좌표: {inspection.facility.location.coordinates[1].toFixed(6)}, {inspection.facility.location.coordinates[0].toFixed(6)}
+              </p>
+            )}
             <div className="flex items-center text-gray-500 text-sm mt-1">
               <MapPin className="w-4 h-4 mr-1" />
               <span>센터: {inspection.facility?.region}</span>

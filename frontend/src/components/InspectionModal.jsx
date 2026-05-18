@@ -145,6 +145,11 @@ export default function InspectionModal({ facility, onClose, onSuccess, initialD
                 <>
                   <h3 className="text-xl font-bold text-red-600 break-keep">{displayName}</h3>
                   {address && <p className="text-xs text-gray-500 mt-1">{address}</p>}
+                  {facility?.location?.coordinates && (
+                    <p className="text-[10px] text-gray-400 mt-0.5 font-mono">
+                      좌표: {facility.location.coordinates[1].toFixed(6)}, {facility.location.coordinates[0].toFixed(6)}
+                    </p>
+                  )}
                 </>
               );
             })()}

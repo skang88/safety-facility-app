@@ -131,7 +131,8 @@ export default function ReportView() {
               <div className="flex justify-between items-end mb-4">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-800 break-keep">{displayName}</h2>
-                  {address && <p className="text-gray-500 text-sm mt-1 mb-1">{address}</p>}
+                  {address && <p className="text-gray-500 text-sm mt-1 mb-0.5">{address}</p>}
+                  <p className="text-gray-400 text-xs mb-1 font-mono">좌표: {lat.toFixed(6)}, {lon.toFixed(6)}</p>
                   <p className="text-gray-600 font-medium mt-1">소관: {fac.region}119안전센터</p>
                 </div>
                 {insp && (

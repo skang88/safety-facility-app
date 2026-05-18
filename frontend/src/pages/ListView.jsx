@@ -152,6 +152,9 @@ export default function ListView() {
                 <div className="pr-2 flex-1">
                   <h3 className="font-bold text-lg text-gray-800 break-keep">{displayName}</h3>
                   {address && <p className="text-[11px] text-gray-500 mt-0.5 leading-tight">{address}</p>}
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    ({fac.location.coordinates[1].toFixed(5)}, {fac.location.coordinates[0].toFixed(5)})
+                  </p>
                 </div>
                 {fac.isInspected ? (
                   <span className="flex items-center text-green-700 bg-green-100 px-2 py-1 rounded text-[11px] font-bold whitespace-nowrap shrink-0">
