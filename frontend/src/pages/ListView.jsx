@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Search, CheckCircle, AlertCircle } from 'lucide-react';
 import InspectionModal from '../components/InspectionModal';
+import InspectionDetailModal from '../components/InspectionDetailModal';
 
 export default function ListView() {
   const [facilities, setFacilities] = useState([]);
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewInspection, setViewInspection] = useState(null);
+  const [editingInspection, setEditingInspection] = useState(null);
   
   // Filters
   const [regionFilter, setRegionFilter] = useState('전체');
@@ -34,8 +37,36 @@ export default function ListView() {
   const handleInspectionComplete = () => {
     setIsModalOpen(false);
     setSelectedFacility(null);
+    setEditingInspection(null);
     fetchFacilities();
-    alert('점검 결과가 등록되었습니다.');
+    alert('점검 결과가 저장되었습니다.');
+  };
+
+  const handleViewResults = (inspection) => {
+    if (!inspection) {
+      alert('점검 결과가 존재하지 않습니다.');
+      return;
+    }
+    setViewInspection(inspection);
+  };
+
+  const handleEdit = (inspection) => {
+    setViewInspection(null);
+    setEditingInspection(inspection);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('정말 삭제하시겠습니까?')) {
+      try {
+        await axios.delete(`/api/inspections/${id}`);
+        setViewInspection(null);
+        fetchFacilities();
+        alert('삭제되었습니다.');
+      } catch (error) {
+        console.error('Failed to delete inspection:', error);
+        alert('삭제에 실패했습니다.');
+      }
+    }
   };
 
   // 1. Filter
@@ -126,25 +157,38 @@ export default function ListView() {
                 </div>
               </div>
 
-              <div className="mt-auto pt-4 border-t border-gray-100 flex gap-2">
+              <div className="mt-auto pt-4 border-t border-gray-100 flex gap-1.5">
                 <a
                   href={`https://map.kakao.com/link/map/${encodeURIComponent(fac.name)},${fac.location.coordinates[1]},${fac.location.coordinates[0]}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-[1] py-2.5 rounded-lg font-bold text-sm transition-colors text-center bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
+                  className="flex-1 py-2 rounded-lg font-bold text-xs sm:text-sm transition-colors text-center bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 flex items-center justify-center whitespace-nowrap"
                 >
-                  📍 위치 보기
+                  📍 위치
                 </a>
-                <button
-                  onClick={() => handleOpenModal(fac)}
-                  className={`flex-[2] py-2.5 rounded-lg font-bold text-sm transition-colors shadow-sm ${
-                    fac.isInspected 
-                      ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50' 
-                      : 'bg-red-600 text-white hover:bg-red-700'
-                  }`}
-                >
-                  {fac.isInspected ? '결과 수정' : '점검 등록'}
-                </button>
+                {fac.isInspected ? (
+                  <>
+                    <button
+                      onClick={() => handleViewResults(fac.latestInspection)}
+                      className="flex-1 py-2 rounded-lg font-bold text-xs sm:text-sm transition-colors shadow-sm bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 whitespace-nowrap"
+                    >
+                      👁 결과보기
+                    </button>
+                    <button
+                      onClick={() => handleEdit(fac.latestInspection)}
+                      className="flex-1 py-2 rounded-lg font-bold text-xs sm:text-sm transition-colors shadow-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+                    >
+                      ✏️ 수정
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => handleOpenModal(fac)}
+                    className="flex-[2] py-2 rounded-lg font-bold text-xs sm:text-sm transition-colors shadow-sm bg-red-600 text-white hover:bg-red-700 whitespace-nowrap"
+                  >
+                    점검 등록
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -162,6 +206,24 @@ export default function ListView() {
         <InspectionModal 
           facility={selectedFacility} 
           onClose={() => setIsModalOpen(false)}
+          onSuccess={handleInspectionComplete}
+        />
+      )}
+
+      {viewInspection && (
+        <InspectionDetailModal 
+          inspection={viewInspection} 
+          onClose={() => setViewInspection(null)} 
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      )}
+
+      {editingInspection && (
+        <InspectionModal 
+          facility={editingInspection.facility}
+          initialData={editingInspection}
+          onClose={() => setEditingInspection(null)}
           onSuccess={handleInspectionComplete}
         />
       )}

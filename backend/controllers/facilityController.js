@@ -10,13 +10,31 @@ exports.getFacilities = async (req, res) => {
     const facilities = await Facility.find().lean();
     
     // Check which facilities have been inspected in the current quarter
-    const inspectedFacilities = await Inspection.distinct('facility', { quarter: currentQuarter });
-    const inspectedIds = inspectedFacilities.map(id => id.toString());
+    const inspections = await Inspection.find({ quarter: currentQuarter }).lean();
+    
+    const inspectionMap = {};
+    for (const insp of inspections) {
+      const facId = insp.facility.toString();
+      if (!inspectionMap[facId] || new Date(insp.createdAt) > new Date(inspectionMap[facId].createdAt)) {
+        inspectionMap[facId] = insp;
+      }
+    }
 
-    const enrichedFacilities = facilities.map(fac => ({
-      ...fac,
-      isInspected: inspectedIds.includes(fac._id.toString())
-    }));
+    const enrichedFacilities = facilities.map(fac => {
+      const facId = fac._id.toString();
+      const latestInspection = inspectionMap[facId] || null;
+      
+      // Attach the facility object to the inspection so InspectionDetailModal can use it
+      if (latestInspection) {
+        latestInspection.facility = fac;
+      }
+      
+      return {
+        ...fac,
+        isInspected: !!latestInspection,
+        latestInspection
+      };
+    });
 
     res.json(enrichedFacilities);
   } catch (error) {
