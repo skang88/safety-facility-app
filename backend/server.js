@@ -4,6 +4,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const apiRoutes = require('./routes/api');
+const seedDatabase = require('./seed');
 
 dotenv.config();
 
@@ -23,8 +24,12 @@ app.use('/api', apiRoutes);
 
 // Database connection
 mongoose.connect(MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log('Connected to MongoDB');
+    
+    // Run seed script
+    await seedDatabase();
+
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });

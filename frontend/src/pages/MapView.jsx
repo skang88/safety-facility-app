@@ -81,7 +81,15 @@ export default function MapView() {
       },
       (error) => {
         console.error('Error getting location:', error);
-        alert('위치 정보를 가져오는데 실패했습니다. 기기의 위치 서비스(GPS) 권한을 확인해주세요.');
+        let errorMsg = '위치 정보를 가져오는데 실패했습니다.';
+        if (error.code === 1) {
+          errorMsg = '권한이 거부되었습니다. 기기 설정에서 위치 권한을 허용해주세요.\n\n* 중요: 스마트폰 브라우저(크롬, 사파리 등)는 보안 정책상 HTTPS 환경이 아니면(예: http://아이피주소) 위치 정보를 차단합니다. https 적용이 필요할 수 있습니다.';
+        } else if (error.code === 2) {
+          errorMsg = '위치 정보를 사용할 수 없습니다. 기기의 GPS가 켜져있는지 확인해주세요.';
+        } else if (error.code === 3) {
+          errorMsg = '위치 정보 요청 시간이 초과되었습니다. 다시 시도해주세요.';
+        }
+        alert(errorMsg);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
