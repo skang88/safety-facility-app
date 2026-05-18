@@ -59,16 +59,29 @@ export default function InspectionDetailModal({ inspection: initialInspection, o
         {/* Simple Header */}
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">
-              {inspection.facility?.name} 
-              {inspection.quarter && <span className="text-sm font-medium text-blue-600 ml-2 bg-blue-50 px-2 py-0.5 rounded">{inspection.quarter.split('-Q')[0]}년 {inspection.quarter.split('-Q')[1]}분기</span>}
+            <h2 className="text-xl font-bold text-gray-800 break-keep">
+              {(() => {
+                const nameStr = inspection.facility?.name || '';
+                const match = nameStr.match(/^(.*?)\s*\((.*?)\)$/);
+                const displayName = match ? match[1] : nameStr;
+                return displayName;
+              })()}
+              {inspection.quarter && <span className="text-sm font-medium text-blue-600 ml-2 bg-blue-50 px-2 py-0.5 rounded align-middle">{inspection.quarter.split('-Q')[0]}년 {inspection.quarter.split('-Q')[1]}분기</span>}
             </h2>
+            {(() => {
+              const nameStr = inspection.facility?.name || '';
+              const match = nameStr.match(/^(.*?)\s*\((.*?)\)$/);
+              if (match && match[2]) {
+                return <p className="text-xs text-gray-500 mt-1">{match[2]}</p>;
+              }
+              return null;
+            })()}
             <div className="flex items-center text-gray-500 text-sm mt-1">
               <MapPin className="w-4 h-4 mr-1" />
               <span>센터: {inspection.facility?.region}</span>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 shrink-0 self-start">
             <X className="w-6 h-6" />
           </button>
         </div>

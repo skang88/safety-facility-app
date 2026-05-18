@@ -136,8 +136,19 @@ export default function InspectionModal({ facility, onClose, onSuccess, initialD
         {/* Form Body - Scrollable */}
         <div className="p-6 overflow-y-auto">
           <div className="mb-4 text-center">
-            <h3 className="text-xl font-bold text-red-600">{facility.name}</h3>
-            <p className="text-sm text-gray-500 mt-1">시설물 ID: {facility._id.slice(-6)}</p>
+            {(() => {
+              const nameStr = facility?.name || '';
+              const match = nameStr.match(/^(.*?)\s*\((.*?)\)$/);
+              const displayName = match ? match[1] : nameStr;
+              const address = match ? match[2] : null;
+              return (
+                <>
+                  <h3 className="text-xl font-bold text-red-600 break-keep">{displayName}</h3>
+                  {address && <p className="text-xs text-gray-500 mt-1">{address}</p>}
+                </>
+              );
+            })()}
+            <p className="text-xs text-gray-400 mt-1">시설물 ID: {facility._id.slice(-6)}</p>
           </div>
 
           <form id="inspection-form" onSubmit={handleSubmit} className="space-y-5">

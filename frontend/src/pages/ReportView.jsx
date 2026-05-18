@@ -2,10 +2,21 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Loader2, Printer, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import L from 'leaflet';
+
+// Fix Leaflet icon issue in React
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 export default function ReportView() {
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [regionFilter, setRegionFilter] = useState('전체');
 
   useEffect(() => {
     fetchFacilities();
@@ -52,6 +63,10 @@ export default function ReportView() {
     throwBag: '드로우백'
   };
 
+  const filteredFacilities = facilities.filter(fac => 
+    regionFilter === '전체' || fac.region === regionFilter
+  );
+
   return (
     <div className="bg-gray-200 min-h-screen overflow-auto print:bg-white pb-20">
       {/* Controls (Hidden in Print) */}
@@ -62,10 +77,20 @@ export default function ReportView() {
           </Link>
         </div>
         <div className="flex items-center space-x-4">
-          <p className="text-sm text-gray-500">총 {facilities.length}개소 보고서</p>
+          <select 
+            value={regionFilter} 
+            onChange={(e) => setRegionFilter(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 outline-none focus:ring-2 focus:ring-red-500 text-sm font-medium"
+          >
+            <option value="전체">센터 전체</option>
+            <option value="의령">의령119안전센터</option>
+            <option value="부림">부림119안전센터</option>
+            <option value="정곡">정곡119안전센터</option>
+          </select>
+          <p className="text-sm text-gray-500 hidden sm:block">총 {filteredFacilities.length}개소 보고서</p>
           <button 
             onClick={handlePrint}
-            className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-sm"
+            className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-sm transition-colors"
           >
             <Printer className="w-5 h-5 mr-2" /> PDF 저장 / 인쇄
           </button>
@@ -74,15 +99,23 @@ export default function ReportView() {
 
       {/* Report Pages */}
       <div className="print:m-0 max-w-[800px] mx-auto mt-8 space-y-8 print:space-y-0">
-        {facilities.map((fac, index) => {
+        {filteredFacilities.length === 0 ? (
+          <div className="text-center p-10 text-gray-500 bg-white rounded-xl shadow print:hidden">
+            해당 센터의 시설물이 없습니다.
+          </div>
+        ) : filteredFacilities.map((fac, index) => {
           const insp = fac.latestInspection;
           const [lon, lat] = fac.location.coordinates;
           
+          const match = fac.name.match(/^(.*?)\s*\((.*?)\)$/);
+          const displayName = match ? match[1] : fac.name;
+          const address = match ? match[2] : null;
+
           return (
             <div 
               key={fac._id} 
               className="bg-white p-10 shadow-lg print:shadow-none print:p-0 mx-auto aspect-[1/1.414] w-full max-w-[210mm] relative box-border"
-              style={{ pageBreakAfter: index === facilities.length - 1 ? 'auto' : 'always' }}
+              style={{ pageBreakAfter: index === filteredFacilities.length - 1 ? 'auto' : 'always' }}
             >
               <style>{`
                 @media print {
@@ -97,7 +130,8 @@ export default function ReportView() {
 
               <div className="flex justify-between items-end mb-4">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-800">{fac.name}</h2>
+                  <h2 className="text-2xl font-bold text-gray-800 break-keep">{displayName}</h2>
+                  {address && <p className="text-gray-500 text-sm mt-1 mb-1">{address}</p>}
                   <p className="text-gray-600 font-medium mt-1">소관: {fac.region}119안전센터</p>
                 </div>
                 {insp && (
@@ -116,15 +150,22 @@ export default function ReportView() {
 
               {/* Map Section */}
               <div className="mb-6 border-2 border-gray-200 rounded-xl overflow-hidden h-48 bg-gray-50 relative">
-                <iframe 
-                  width="100%" 
-                  height="100%" 
-                  frameBorder="0" 
-                  scrolling="no" 
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.005}%2C${lat-0.005}%2C${lon+0.005}%2C${lat+0.005}&layer=mapnik&marker=${lat}%2C${lon}`}
-                  className="absolute inset-0"
-                  title="map"
-                ></iframe>
+                <MapContainer 
+                  center={[lat, lon]} 
+                  zoom={15} 
+                  style={{ height: '100%', width: '100%' }}
+                  zoomControl={false}
+                  dragging={false}
+                  touchZoom={false}
+                  scrollWheelZoom={false}
+                  doubleClickZoom={false}
+                  attributionControl={false}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <Marker position={[lat, lon]} />
+                </MapContainer>
               </div>
 
               {/* Photos Section */}

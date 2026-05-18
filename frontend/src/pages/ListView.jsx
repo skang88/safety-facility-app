@@ -141,16 +141,24 @@ export default function ListView() {
       {/* List Area */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map(fac => (
+          {filtered.map(fac => {
+            const match = fac.name.match(/^(.*?)\s*\((.*?)\)$/);
+            const displayName = match ? match[1] : fac.name;
+            const address = match ? match[2] : null;
+
+            return (
             <div key={fac._id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start mb-3">
-                <h3 className="font-bold text-lg text-gray-800 break-keep pr-2">{fac.name}</h3>
+                <div className="pr-2 flex-1">
+                  <h3 className="font-bold text-lg text-gray-800 break-keep">{displayName}</h3>
+                  {address && <p className="text-[11px] text-gray-500 mt-0.5 leading-tight">{address}</p>}
+                </div>
                 {fac.isInspected ? (
-                  <span className="flex items-center text-green-700 bg-green-100 px-2 py-1 rounded text-[11px] font-bold whitespace-nowrap">
+                  <span className="flex items-center text-green-700 bg-green-100 px-2 py-1 rounded text-[11px] font-bold whitespace-nowrap shrink-0">
                     <CheckCircle className="w-3 h-3 mr-1" /> 완료
                   </span>
                 ) : (
-                  <span className="flex items-center text-red-700 bg-red-100 px-2 py-1 rounded text-[11px] font-bold whitespace-nowrap">
+                  <span className="flex items-center text-red-700 bg-red-100 px-2 py-1 rounded text-[11px] font-bold whitespace-nowrap shrink-0">
                     <AlertCircle className="w-3 h-3 mr-1" /> 미점검
                   </span>
                 )}
