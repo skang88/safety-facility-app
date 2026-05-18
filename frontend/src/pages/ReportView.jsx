@@ -215,10 +215,6 @@ export default function ReportView() {
                   {insp?.notes ? insp.notes : '특이사항 없음'}
                 </div>
               </div>
-
-              <div className="absolute bottom-10 right-10 text-right">
-                <p className="text-sm text-gray-500">의령소방서 119구조대</p>
-              </div>
             </div>
           );
         })}
