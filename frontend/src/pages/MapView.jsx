@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker } from 'react-leaflet';
 import axios from 'axios';
 import L from 'leaflet';
 import InspectionModal from '../components/InspectionModal';
@@ -26,10 +26,22 @@ function MapBounds({ facilities }) {
   return null;
 }
 
+// Helper component to fly to user location
+function FlyToLocation({ location }) {
+  const map = useMap();
+  useEffect(() => {
+    if (location) {
+      map.flyTo(location, 14, { animate: true });
+    }
+  }, [location, map]);
+  return null;
+}
+
 export default function MapView() {
   const [facilities, setFacilities] = useState([]);
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
 
   useEffect(() => {
     fetchFacilities();
@@ -56,11 +68,36 @@ export default function MapView() {
     alert('점검 결과가 등록되었습니다.');
   };
 
+  const handleLocateUser = () => {
+    if (!navigator.geolocation) {
+      alert('현재 브라우저에서는 위치 정보를 지원하지 않습니다.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation([latitude, longitude]);
+      },
+      (error) => {
+        console.error('Error getting location:', error);
+        alert('위치 정보를 가져오는데 실패했습니다. 기기의 위치 서비스(GPS) 권한을 확인해주세요.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
   // Default center for Uiryeong if no facilities loaded yet
   const defaultCenter = [35.3168, 128.2570];
 
   return (
     <div className="h-full w-full relative">
+      <button 
+        onClick={handleLocateUser}
+        className="absolute top-4 right-4 z-[1000] bg-white text-gray-800 py-2 px-3 rounded-lg shadow-md border border-gray-200 hover:bg-gray-50 flex items-center gap-2 font-bold text-sm"
+      >
+        <span>📍</span> 내 위치 찾기
+      </button>
       <MapContainer 
         center={defaultCenter} 
         zoom={12} 
@@ -71,7 +108,18 @@ export default function MapView() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {facilities.length > 0 && <MapBounds facilities={facilities} />}
+        {facilities.length > 0 && !userLocation && <MapBounds facilities={facilities} />}
+        {userLocation && <FlyToLocation location={userLocation} />}
+
+        {userLocation && (
+          <CircleMarker 
+            center={userLocation} 
+            radius={8} 
+            pathOptions={{ color: '#2563eb', fillColor: '#3b82f6', fillOpacity: 1 }}
+          >
+            <Popup>현재 내 위치</Popup>
+          </CircleMarker>
+        )}
         
         {facilities.map((fac) => (
           <Marker 

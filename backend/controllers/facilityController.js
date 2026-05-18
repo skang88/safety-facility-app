@@ -24,6 +24,69 @@ exports.getFacilities = async (req, res) => {
   }
 };
 
+exports.createFacility = async (req, res) => {
+  try {
+    const { name, region, coordinates, baseItems } = req.body;
+    
+    const facility = new Facility({
+      name,
+      region,
+      location: {
+        type: 'Point',
+        coordinates: coordinates && coordinates.length === 2 ? coordinates : [0, 0]
+      },
+      baseItems: baseItems || {}
+    });
+
+    await facility.save();
+    res.status(201).json(facility);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateFacility = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, region, coordinates, baseItems } = req.body;
+    
+    const facility = await Facility.findById(id);
+    if (!facility) return res.status(404).json({ error: 'Facility not found' });
+
+    if (name) facility.name = name;
+    if (region) facility.region = region;
+    if (coordinates && coordinates.length === 2) {
+      facility.location = {
+        type: 'Point',
+        coordinates
+      };
+    }
+    if (baseItems) {
+      facility.baseItems = { ...facility.baseItems, ...baseItems };
+    }
+
+    await facility.save();
+    res.json(facility);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.deleteFacility = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const facility = await Facility.findByIdAndDelete(id);
+    if (!facility) return res.status(404).json({ error: 'Facility not found' });
+    
+    // Delete related inspections to maintain referential integrity
+    await Inspection.deleteMany({ facility: id });
+
+    res.json({ message: 'Facility and related inspections deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.getDashboardSummary = async (req, res) => {
   try {
     const totalFacilities = await Facility.countDocuments();

@@ -8,7 +8,11 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // Routes
+// Facility Routes
 router.get('/facilities', facilityController.getFacilities);
+router.post('/facilities', facilityController.createFacility);
+router.put('/facilities/:id', facilityController.updateFacility);
+router.delete('/facilities/:id', facilityController.deleteFacility);
 router.get('/dashboard-summary', facilityController.getDashboardSummary);
 
 // Upload photo as part of inspection
