@@ -9,15 +9,15 @@ exports.getFacilities = async (req, res) => {
     const currentQuarter = getCurrentQuarter();
     const facilities = await Facility.find().lean();
     
-    // Check which facilities have been inspected in the current quarter
-    const inspections = await Inspection.find({ quarter: currentQuarter }).lean();
+    // Get the most recent inspection for each facility using aggregation
+    const latestInspections = await Inspection.aggregate([
+      { $sort: { createdAt: -1 } },
+      { $group: { _id: "$facility", latest: { $first: "$$ROOT" } } }
+    ]);
     
     const inspectionMap = {};
-    for (const insp of inspections) {
-      const facId = insp.facility.toString();
-      if (!inspectionMap[facId] || new Date(insp.createdAt) > new Date(inspectionMap[facId].createdAt)) {
-        inspectionMap[facId] = insp;
-      }
+    for (const item of latestInspections) {
+      inspectionMap[item._id.toString()] = item.latest;
     }
 
     const enrichedFacilities = facilities.map(fac => {
@@ -29,9 +29,11 @@ exports.getFacilities = async (req, res) => {
         latestInspection.facility = fac;
       }
       
+      const isInspected = latestInspection ? latestInspection.quarter === currentQuarter : false;
+      
       return {
         ...fac,
-        isInspected: !!latestInspection,
+        isInspected,
         latestInspection
       };
     });

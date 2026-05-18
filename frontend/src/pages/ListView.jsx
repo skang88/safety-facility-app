@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Search, CheckCircle, AlertCircle } from 'lucide-react';
+import { Search, CheckCircle, AlertCircle, Printer } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import InspectionModal from '../components/InspectionModal';
 import InspectionDetailModal from '../components/InspectionDetailModal';
 
@@ -91,8 +92,18 @@ export default function ListView() {
   return (
     <div className="h-full w-full bg-gray-50 flex flex-col">
       {/* Filters Area */}
-      <div className="bg-white p-4 shadow-sm z-10 border-b">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row gap-3">
+      <div className="bg-white p-4 shadow-sm z-10 border-b flex flex-col space-y-3">
+        <div className="flex justify-between items-center">
+          <h2 className="font-bold text-gray-800">점검 리스트 ({filtered.length}개소)</h2>
+          <Link 
+            to="/report" 
+            className="flex items-center px-3 py-1.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-sm text-xs transition-colors"
+          >
+            <Printer className="w-3.5 h-3.5 mr-1.5" />
+            보고서 출력
+          </Link>
+        </div>
+        <div className="max-w-7xl w-full flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input 
@@ -182,12 +193,22 @@ export default function ListView() {
                     </button>
                   </>
                 ) : (
-                  <button
-                    onClick={() => handleOpenModal(fac)}
-                    className="flex-[2] py-2 rounded-lg font-bold text-xs sm:text-sm transition-colors shadow-sm bg-red-600 text-white hover:bg-red-700 whitespace-nowrap"
-                  >
-                    점검 등록
-                  </button>
+                  <>
+                    {fac.latestInspection && (
+                      <button
+                        onClick={() => handleViewResults(fac.latestInspection)}
+                        className="flex-1 py-2 rounded-lg font-bold text-xs sm:text-sm transition-colors shadow-sm bg-gray-50 border border-gray-300 text-gray-700 hover:bg-gray-100 whitespace-nowrap"
+                      >
+                        ⏱ 이력보기
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleOpenModal(fac)}
+                      className="flex-[2] py-2 rounded-lg font-bold text-xs sm:text-sm transition-colors shadow-sm bg-red-600 text-white hover:bg-red-700 whitespace-nowrap"
+                    >
+                      점검 등록
+                    </button>
+                  </>
                 )}
               </div>
             </div>

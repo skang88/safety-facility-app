@@ -3,13 +3,23 @@ import { LayoutDashboard, ListChecks } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import ListView from './pages/ListView';
 
+import ReportView from './pages/ReportView';
+
 function App() {
   const location = useLocation();
+
+  if (location.pathname === '/report') {
+    return (
+      <Routes>
+        <Route path="/report" element={<ReportView />} />
+      </Routes>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen">
       {/* Top Navigation */}
-      <nav className="bg-red-700 text-white shadow-md z-50">
+      <nav className="bg-red-700 text-white shadow-md z-50 print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
@@ -40,7 +50,7 @@ function App() {
       </nav>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-hidden relative">
+      <main className="flex-1 overflow-hidden relative print:overflow-visible">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/list" element={<ListView />} />
