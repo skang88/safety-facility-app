@@ -55,7 +55,7 @@ export default function Dashboard() {
   return (
     <div className="h-full overflow-y-auto bg-gray-50 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        <h1 className="text-2xl font-bold text-gray-800">현황 및 통계</h1>
+        <h1 className="text-2xl font-bold text-gray-800">수난안전시설물 점검 현황 및 통계</h1>
         
         {/* Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

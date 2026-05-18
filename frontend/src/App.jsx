@@ -13,7 +13,7 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <span className="font-bold text-xl">의령소방서 수난안전시설물 점검</span>
+              <span className="font-bold text-xl">의령소방서</span>
             </div>
             <div className="flex items-center space-x-4">
               <Link

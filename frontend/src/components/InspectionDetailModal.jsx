@@ -33,50 +33,59 @@ export default function InspectionDetailModal({ inspection, onClose, onEdit, onD
       <div className="fixed inset-0 bg-black bg-opacity-60 transition-opacity" onClick={onClose}></div>
       
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg relative z-10 flex flex-col max-h-[90vh] overflow-hidden">
-        {/* Header with Photo Background (if available) or solid color */}
-        <div className="relative h-48 bg-gray-900 flex-shrink-0 flex">
-          {inspection.externalPhotoPath ? (
-            <img 
-              src={inspection.externalPhotoPath} 
-              alt="외부 사진" 
-              className="w-1/2 h-full object-cover opacity-80 border-r border-gray-800"
-            />
-          ) : (
-            <div className="w-1/2 h-full flex items-center justify-center bg-gray-200 border-r border-gray-300">
-              <span className="text-gray-400 text-sm">외부 사진 없음</span>
-            </div>
-          )}
-          {inspection.internalPhotoPath ? (
-            <img 
-              src={inspection.internalPhotoPath} 
-              alt="내부 사진" 
-              className="w-1/2 h-full object-cover opacity-80"
-            />
-          ) : (
-            <div className="w-1/2 h-full flex items-center justify-center bg-gray-200">
-              <span className="text-gray-400 text-sm">내부 사진 없음</span>
-            </div>
-          )}
-          
-          <button 
-            onClick={onClose} 
-            className="absolute top-4 right-4 bg-black bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-70 transition"
-          >
-            <X className="w-6 h-6" />
-          </button>
-          
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-            <h2 className="text-2xl font-bold text-white shadow-sm">{inspection.facility?.name}</h2>
-            <div className="flex items-center text-gray-200 text-sm mt-1">
+        {/* Simple Header */}
+        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">{inspection.facility?.name}</h2>
+            <div className="flex items-center text-gray-500 text-sm mt-1">
               <MapPin className="w-4 h-4 mr-1" />
-              <span>관서: {inspection.facility?.region}</span>
+              <span>센터: {inspection.facility?.region}</span>
             </div>
           </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto bg-gray-50 flex-1">
+        <div className="p-6 overflow-y-auto bg-white flex-1 space-y-6">
           
+          {/* Photos Section */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-bold text-gray-700 mb-2">외부 사진</p>
+              {inspection.externalPhotoPath ? (
+                <a href={inspection.externalPhotoPath} target="_blank" rel="noopener noreferrer">
+                  <img 
+                    src={inspection.externalPhotoPath} 
+                    alt="외부 사진" 
+                    className="w-full h-48 object-cover rounded-xl border border-gray-200 shadow-sm hover:opacity-90 transition"
+                  />
+                </a>
+              ) : (
+                <div className="w-full h-48 flex items-center justify-center bg-gray-100 rounded-xl border border-gray-200">
+                  <span className="text-gray-400 text-sm">사진 없음</span>
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-700 mb-2">내부 사진</p>
+              {inspection.internalPhotoPath ? (
+                <a href={inspection.internalPhotoPath} target="_blank" rel="noopener noreferrer">
+                  <img 
+                    src={inspection.internalPhotoPath} 
+                    alt="내부 사진" 
+                    className="w-full h-48 object-cover rounded-xl border border-gray-200 shadow-sm hover:opacity-90 transition"
+                  />
+                </a>
+              ) : (
+                <div className="w-full h-48 flex items-center justify-center bg-gray-100 rounded-xl border border-gray-200">
+                  <span className="text-gray-400 text-sm">사진 없음</span>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Info Cards */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-start space-x-3">
@@ -102,7 +111,7 @@ export default function InspectionDetailModal({ inspection, onClose, onEdit, onD
           </div>
 
           {/* Item Status Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
               <h3 className="font-bold text-gray-800 text-sm">장비 상태</h3>
             </div>
@@ -124,7 +133,7 @@ export default function InspectionDetailModal({ inspection, onClose, onEdit, onD
 
           {/* Notes Card */}
           {inspection.notes && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center space-x-2">
                 <FileText className="w-4 h-4 text-gray-500" />
                 <h3 className="font-bold text-gray-800 text-sm">특이사항</h3>
