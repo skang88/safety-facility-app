@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Camera, X, Loader2 } from 'lucide-react';
 
 export default function InspectionModal({ facility, onClose, onSuccess, initialData = null }) {
-  const [affiliation, setAffiliation] = useState(initialData?.affiliation || '의령119안전센터');
+  const [affiliation, setAffiliation] = useState(initialData?.affiliation || (facility?.region ? `${facility.region}119안전센터` : '의령119안전센터'));
   const [inspectorName, setInspectorName] = useState(initialData?.inspectorName || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [externalPhoto, setExternalPhoto] = useState(null);

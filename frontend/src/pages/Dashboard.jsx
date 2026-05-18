@@ -120,7 +120,7 @@ export default function Dashboard() {
                     <div>
                       <h3 className="font-semibold text-gray-900">{insp.facility?.name}</h3>
                       <p className="text-sm text-gray-500 mt-1">
-                        {insp.affiliation} {insp.inspectorName} 점검 (관서: {insp.facility?.region})
+                        {insp.affiliation} {insp.inspectorName} 점검
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
                         {new Date(insp.createdAt).toLocaleDateString()}
