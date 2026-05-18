@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+uploads/
+backend/uploads/
+*.xlsx
+.env
+dist/
+build/
+tmp_excel_reader/
