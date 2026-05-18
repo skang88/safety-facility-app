@@ -27,13 +27,43 @@ export default function InspectionModal({ facility, onClose, onSuccess, initialD
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        if (type === 'external') {
-          setExternalPhoto(file);
-          setExternalPhotoPreview(reader.result);
-        } else {
-          setInternalPhoto(file);
-          setInternalPhotoPreview(reader.result);
-        }
+        // Create an image element to resize via canvas
+        const img = new Image();
+        img.onload = () => {
+          const MAX_WIDTH = 1000;
+          let width = img.width;
+          let height = img.height;
+          
+          // Resize if width is larger than MAX_WIDTH
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+          
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Convert to jpeg blob
+          canvas.toBlob((blob) => {
+            const compressedFile = new File([blob], `photo-${Date.now()}.jpg`, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            const previewUrl = canvas.toDataURL('image/jpeg', 0.8);
+            
+            if (type === 'external') {
+              setExternalPhoto(compressedFile);
+              setExternalPhotoPreview(previewUrl);
+            } else {
+              setInternalPhoto(compressedFile);
+              setInternalPhotoPreview(previewUrl);
+            }
+          }, 'image/jpeg', 0.8);
+        };
+        img.src = reader.result;
       };
       reader.readAsDataURL(file);
     }

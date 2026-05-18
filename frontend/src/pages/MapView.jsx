@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import axios from 'axios';
 import L from 'leaflet';
 import InspectionModal from '../components/InspectionModal';
@@ -14,7 +14,6 @@ const createIcon = (isInspected) => {
   });
 };
 
-// Helper component to adjust map bounds
 function MapBounds({ facilities }) {
   const map = useMap();
   useEffect(() => {
@@ -26,22 +25,10 @@ function MapBounds({ facilities }) {
   return null;
 }
 
-// Helper component to fly to user location
-function FlyToLocation({ location }) {
-  const map = useMap();
-  useEffect(() => {
-    if (location) {
-      map.flyTo(location, 14, { animate: true });
-    }
-  }, [location, map]);
-  return null;
-}
-
 export default function MapView() {
   const [facilities, setFacilities] = useState([]);
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [userLocation, setUserLocation] = useState(null);
 
   useEffect(() => {
     fetchFacilities();
@@ -68,44 +55,11 @@ export default function MapView() {
     alert('점검 결과가 등록되었습니다.');
   };
 
-  const handleLocateUser = () => {
-    if (!navigator.geolocation) {
-      alert('현재 브라우저에서는 위치 정보를 지원하지 않습니다.');
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setUserLocation([latitude, longitude]);
-      },
-      (error) => {
-        console.error('Error getting location:', error);
-        let errorMsg = '위치 정보를 가져오는데 실패했습니다.';
-        if (error.code === 1) {
-          errorMsg = '권한이 거부되었습니다. 기기 설정에서 위치 권한을 허용해주세요.\n\n* 중요: 스마트폰 브라우저(크롬, 사파리 등)는 보안 정책상 HTTPS 환경이 아니면(예: http://아이피주소) 위치 정보를 차단합니다. https 적용이 필요할 수 있습니다.';
-        } else if (error.code === 2) {
-          errorMsg = '위치 정보를 사용할 수 없습니다. 기기의 GPS가 켜져있는지 확인해주세요.';
-        } else if (error.code === 3) {
-          errorMsg = '위치 정보 요청 시간이 초과되었습니다. 다시 시도해주세요.';
-        }
-        alert(errorMsg);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  };
-
   // Default center for Uiryeong if no facilities loaded yet
   const defaultCenter = [35.3168, 128.2570];
 
   return (
     <div className="h-full w-full relative">
-      <button 
-        onClick={handleLocateUser}
-        className="absolute top-4 right-4 z-[1000] bg-white text-gray-800 py-2 px-3 rounded-lg shadow-md border border-gray-200 hover:bg-gray-50 flex items-center gap-2 font-bold text-sm"
-      >
-        <span>📍</span> 내 위치 찾기
-      </button>
       <MapContainer 
         center={defaultCenter} 
         zoom={12} 
@@ -116,18 +70,7 @@ export default function MapView() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {facilities.length > 0 && !userLocation && <MapBounds facilities={facilities} />}
-        {userLocation && <FlyToLocation location={userLocation} />}
-
-        {userLocation && (
-          <CircleMarker 
-            center={userLocation} 
-            radius={8} 
-            pathOptions={{ color: '#2563eb', fillColor: '#3b82f6', fillOpacity: 1 }}
-          >
-            <Popup>현재 내 위치</Popup>
-          </CircleMarker>
-        )}
+        {facilities.length > 0 && <MapBounds facilities={facilities} />}
         
         {facilities.map((fac) => (
           <Marker 
