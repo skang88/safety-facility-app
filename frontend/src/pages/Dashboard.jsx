@@ -73,7 +73,11 @@ export default function Dashboard() {
               <AlertCircle className="w-8 h-8" />
             </div>
             <div>
-              <p className="text-sm text-gray-500 font-medium">이번 분기 점검 완료</p>
+              <p className="text-sm text-gray-500 font-medium">
+                {summary?.currentQuarter 
+                  ? `${summary.currentQuarter.split('-Q')[0]}년 ${summary.currentQuarter.split('-Q')[1]}분기`
+                  : '이번 분기'} 점검 완료
+              </p>
               <p className="text-3xl font-bold text-gray-900">{summary?.inspectionsCount || 0}</p>
             </div>
           </div>

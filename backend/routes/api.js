@@ -16,6 +16,7 @@ router.delete('/facilities/:id', facilityController.deleteFacility);
 router.get('/dashboard-summary', facilityController.getDashboardSummary);
 
 // Upload photo as part of inspection
+router.get('/facilities/:facilityId/inspections', facilityController.getFacilityInspections);
 router.post('/facilities/:facilityId/inspections', upload.fields([
   { name: 'externalPhoto', maxCount: 1 },
   { name: 'internalPhoto', maxCount: 1 }

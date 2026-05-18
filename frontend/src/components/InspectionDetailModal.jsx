@@ -1,6 +1,29 @@
-import { X, CheckCircle, AlertTriangle, XCircle, Calendar, User, MapPin, FileText, Edit2, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+import { X, CheckCircle, AlertTriangle, XCircle, Calendar, User, MapPin, FileText, Edit2, Trash2, History } from 'lucide-react';
 
-export default function InspectionDetailModal({ inspection, onClose, onEdit, onDelete }) {
+export default function InspectionDetailModal({ inspection: initialInspection, onClose, onEdit, onDelete }) {
+  const [inspection, setInspection] = useState(initialInspection);
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    if (inspection?.facility?._id) {
+      setLoadingHistory(true);
+      axios.get(`/api/facilities/${inspection.facility._id}/inspections`)
+        .then(res => {
+          // Attach facility object to each history item so it works when viewing them
+          const historyData = res.data.map(insp => ({
+            ...insp,
+            facility: inspection.facility
+          }));
+          setHistory(historyData);
+        })
+        .catch(err => console.error(err))
+        .finally(() => setLoadingHistory(false));
+    }
+  }, [inspection?.facility?._id]);
+
   if (!inspection) return null;
 
   const itemLabels = {
@@ -36,7 +59,10 @@ export default function InspectionDetailModal({ inspection, onClose, onEdit, onD
         {/* Simple Header */}
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">{inspection.facility?.name}</h2>
+            <h2 className="text-xl font-bold text-gray-800">
+              {inspection.facility?.name} 
+              {inspection.quarter && <span className="text-sm font-medium text-blue-600 ml-2 bg-blue-50 px-2 py-0.5 rounded">{inspection.quarter.split('-Q')[0]}년 {inspection.quarter.split('-Q')[1]}분기</span>}
+            </h2>
             <div className="flex items-center text-gray-500 text-sm mt-1">
               <MapPin className="w-4 h-4 mr-1" />
               <span>센터: {inspection.facility?.region}</span>
@@ -142,6 +168,38 @@ export default function InspectionDetailModal({ inspection, onClose, onEdit, onD
                 <p className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">
                   {inspection.notes}
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* History Card */}
+          {history.filter(h => h._id !== inspection._id).length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <History className="w-4 h-4 text-gray-500" />
+                  <h3 className="font-bold text-gray-800 text-sm">과거 점검 이력</h3>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {history.filter(h => h._id !== inspection._id).map(past => (
+                  <div 
+                    key={past._id} 
+                    onClick={() => setInspection(past)}
+                    className="p-4 flex items-center justify-between hover:bg-gray-50 transition cursor-pointer"
+                  >
+                    <div>
+                      <p className="font-semibold text-gray-800 text-sm">
+                        {past.quarter ? `${past.quarter.split('-Q')[0]}년 ${past.quarter.split('-Q')[1]}분기` : new Date(past.createdAt).toLocaleDateString()}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">{past.affiliation} {past.inspectorName}</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs text-gray-400">{new Date(past.createdAt).toLocaleDateString()}</span>
+                      <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">보기</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

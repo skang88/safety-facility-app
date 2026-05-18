@@ -105,6 +105,18 @@ exports.deleteFacility = async (req, res) => {
   }
 };
 
+exports.getFacilityInspections = async (req, res) => {
+  try {
+    const { facilityId } = req.params;
+    const inspections = await Inspection.find({ facility: facilityId })
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json(inspections);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.getDashboardSummary = async (req, res) => {
   try {
     const totalFacilities = await Facility.countDocuments();
@@ -120,7 +132,8 @@ exports.getDashboardSummary = async (req, res) => {
     res.json({
       totalFacilities,
       inspectionsCount,
-      recentInspections
+      recentInspections,
+      currentQuarter
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
