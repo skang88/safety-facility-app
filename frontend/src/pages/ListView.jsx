@@ -4,6 +4,7 @@ import { Search, CheckCircle, AlertCircle, Printer } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import InspectionModal from '../components/InspectionModal';
 import InspectionDetailModal from '../components/InspectionDetailModal';
+import FacilityEditModal from '../components/FacilityEditModal';
 
 export default function ListView() {
   const [facilities, setFacilities] = useState([]);
@@ -11,6 +12,7 @@ export default function ListView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewInspection, setViewInspection] = useState(null);
   const [editingInspection, setEditingInspection] = useState(null);
+  const [editingFacility, setEditingFacility] = useState(null);
   
   // Filters
   const [regionFilter, setRegionFilter] = useState('전체');
@@ -152,9 +154,17 @@ export default function ListView() {
                 <div className="pr-2 flex-1">
                   <h3 className="font-bold text-lg text-gray-800 break-keep">{displayName}</h3>
                   {address && <p className="text-[11px] text-gray-500 mt-0.5 leading-tight">{address}</p>}
-                  <p className="text-[10px] text-gray-400 mt-0.5">
-                    ({fac.location.coordinates[1].toFixed(5)}, {fac.location.coordinates[0].toFixed(5)})
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5 text-gray-400">
+                    <p className="text-[10px]">
+                      ({fac.location.coordinates[1].toFixed(5)}, {fac.location.coordinates[0].toFixed(5)})
+                    </p>
+                    <button
+                      onClick={() => setEditingFacility(fac)}
+                      className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline font-bold flex items-center transition-colors shrink-0"
+                    >
+                      좌표 수정
+                    </button>
+                  </div>
                 </div>
                 {fac.isInspected ? (
                   <span className="flex items-center text-green-700 bg-green-100 px-2 py-1 rounded text-[11px] font-bold whitespace-nowrap shrink-0">
@@ -258,6 +268,18 @@ export default function ListView() {
           initialData={editingInspection}
           onClose={() => setEditingInspection(null)}
           onSuccess={handleInspectionComplete}
+        />
+      )}
+
+      {editingFacility && (
+        <FacilityEditModal
+          facility={editingFacility}
+          onClose={() => setEditingFacility(null)}
+          onSuccess={() => {
+            setEditingFacility(null);
+            fetchFacilities();
+            alert('시설물 정보 및 좌표가 수정되었습니다.');
+          }}
         />
       )}
     </div>
