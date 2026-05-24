@@ -131,11 +131,54 @@ exports.getDashboardSummary = async (req, res) => {
     const inspectedFacilities = await Inspection.distinct('facility', { quarter: currentQuarter });
     const inspectionsCount = inspectedFacilities.length;
 
+    // Get the most recent inspection for each facility using aggregation
+    const latestInspections = await Inspection.aggregate([
+      { $sort: { createdAt: -1 } },
+      { $group: { _id: "$facility", latest: { $first: "$$ROOT" } } }
+    ]);
+
+    const equipmentStats = {
+      lifebuoy: { good: 0, bad: 0, none: 0 },
+      lifeJacket: { good: 0, bad: 0, none: 0 },
+      lifeline: { good: 0, bad: 0, none: 0 },
+      throwBag: { good: 0, bad: 0, none: 0 }
+    };
+
+    latestInspections.forEach(item => {
+      const status = item.latest.itemsStatus || {};
+      
+      const lifebuoyVal = status.lifebuoy || '양호';
+      const lifeJacketVal = status.lifeJacket || '양호';
+      const lifelineVal = status.lifeline || '양호';
+      const throwBagVal = status.throwBag || '양호';
+
+      // lifebuoy
+      if (lifebuoyVal === '양호') equipmentStats.lifebuoy.good++;
+      else if (lifebuoyVal === '불량') equipmentStats.lifebuoy.bad++;
+      else if (lifebuoyVal === '없음') equipmentStats.lifebuoy.none++;
+      
+      // lifeJacket
+      if (lifeJacketVal === '양호') equipmentStats.lifeJacket.good++;
+      else if (lifeJacketVal === '불량') equipmentStats.lifeJacket.bad++;
+      else if (lifeJacketVal === '없음') equipmentStats.lifeJacket.none++;
+      
+      // lifeline
+      if (lifelineVal === '양호') equipmentStats.lifeline.good++;
+      else if (lifelineVal === '불량') equipmentStats.lifeline.bad++;
+      else if (lifelineVal === '없음') equipmentStats.lifeline.none++;
+      
+      // throwBag
+      if (throwBagVal === '양호') equipmentStats.throwBag.good++;
+      else if (throwBagVal === '불량') equipmentStats.throwBag.bad++;
+      else if (throwBagVal === '없음') equipmentStats.throwBag.none++;
+    });
+
     res.json({
       totalFacilities,
       inspectionsCount,
       recentInspections,
-      currentQuarter
+      currentQuarter,
+      equipmentStats
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { AlertCircle, CheckCircle, Clock, Printer } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Printer, LifeBuoy, Shield, Anchor, Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import InspectionDetailModal from '../components/InspectionDetailModal';
 import InspectionModal from '../components/InspectionModal';
@@ -10,6 +10,61 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedInspection, setSelectedInspection] = useState(null);
   const [editingInspection, setEditingInspection] = useState(null);
+
+  const equipmentNames = {
+    lifebuoy: { label: '구명환', icon: LifeBuoy, color: 'text-blue-600 bg-blue-100' },
+    lifeJacket: { label: '구명조끼', icon: Shield, color: 'text-emerald-600 bg-emerald-100' },
+    lifeline: { label: '구명줄', icon: Anchor, color: 'text-violet-600 bg-violet-100' },
+    throwBag: { label: '드로우백', icon: Package, color: 'text-amber-600 bg-amber-100' }
+  };
+
+  const stats = summary?.equipmentStats || {
+    lifebuoy: { good: 0, bad: 0, none: 0 },
+    lifeJacket: { good: 0, bad: 0, none: 0 },
+    lifeline: { good: 0, bad: 0, none: 0 },
+    throwBag: { good: 0, bad: 0, none: 0 }
+  };
+
+  const renderStackedBar = (itemStats) => {
+    const { good, bad, none } = itemStats;
+    const total = good + bad + none;
+    if (total === 0) {
+      return (
+        <div className="w-full bg-gray-100 rounded-full h-3 flex items-center justify-center text-[10px] text-gray-400 font-medium">
+          점검 기록 없음
+        </div>
+      );
+    }
+    const goodPercent = (good / total) * 100;
+    const badPercent = (bad / total) * 100;
+    const nonePercent = (none / total) * 100;
+
+    return (
+      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden flex">
+        {good > 0 && (
+          <div 
+            className="bg-green-500 h-full transition-all duration-500" 
+            style={{ width: `${goodPercent}%` }}
+            title={`양호: ${good}개 (${Math.round(goodPercent)}%)`}
+          />
+        )}
+        {bad > 0 && (
+          <div 
+            className="bg-red-500 h-full transition-all duration-500" 
+            style={{ width: `${badPercent}%` }}
+            title={`불량: ${bad}개 (${Math.round(badPercent)}%)`}
+          />
+        )}
+        {none > 0 && (
+          <div 
+            className="bg-gray-400 h-full transition-all duration-500" 
+            style={{ width: `${nonePercent}%` }}
+            title={`없음: ${none}개 (${Math.round(nonePercent)}%)`}
+          />
+        )}
+      </div>
+    );
+  };
 
   useEffect(() => {
     fetchSummary();
@@ -110,6 +165,57 @@ export default function Dashboard() {
           <p className="text-xs text-gray-500 mt-2 text-right">
             {summary?.totalFacilities || 0}개소 중 {summary?.inspectionsCount || 0}개소 완료
           </p>
+        </div>
+
+        {/* Equipment Stats */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 space-y-4">
+          <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+            <span className="inline-block w-2.5 h-2.5 bg-blue-600 rounded-full mr-2"></span>
+            장비 상태 통계 <span className="text-xs font-normal text-gray-500 ml-2">(최근 점검 결과 기준)</span>
+          </h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {Object.entries(equipmentNames).map(([key, item]) => {
+              const itemStats = stats[key] || { good: 0, bad: 0, none: 0 };
+              const total = itemStats.good + itemStats.bad + itemStats.none;
+              const IconComponent = item.icon;
+
+              return (
+                <div 
+                  key={key} 
+                  className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:-translate-y-1 hover:shadow-md transition-all duration-300 flex flex-col justify-between"
+                >
+                  <div className="flex items-center space-x-3 mb-3">
+                    <div className={`p-2 rounded-lg ${item.color}`}>
+                      <IconComponent className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{item.label}</h3>
+                      <p className="text-xs text-gray-500">총 {total}개소 점검</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {renderStackedBar(itemStats)}
+                    
+                    <div className="grid grid-cols-3 gap-1 text-center text-xs">
+                      <div className="bg-green-50/50 border border-green-100 rounded px-1 py-1">
+                        <span className="block text-gray-500 text-[10px]">양호</span>
+                        <span className="font-bold text-green-600 text-xs sm:text-sm">{itemStats.good}</span>
+                      </div>
+                      <div className={`border rounded px-1 py-1 ${itemStats.bad > 0 ? 'bg-red-50 border-red-200' : 'bg-red-50/30 border-red-100'}`}>
+                        <span className="block text-gray-500 text-[10px]">불량</span>
+                        <span className={`font-bold text-xs sm:text-sm ${itemStats.bad > 0 ? 'text-red-600 font-extrabold' : 'text-gray-400'}`}>{itemStats.bad}</span>
+                      </div>
+                      <div className="bg-gray-50 border border-gray-100 rounded px-1 py-1">
+                        <span className="block text-gray-500 text-[10px]">없음</span>
+                        <span className="font-bold text-gray-600 text-xs sm:text-sm">{itemStats.none}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Recent Inspections */}
