@@ -124,7 +124,7 @@ export default function ReportView() {
                 }
               `}</style>
 
-              <div className="text-center mb-8 border-b-2 border-red-700 pb-4">
+              <div className="text-center mb-6 border-b-2 border-red-700 pb-3">
                 <h1 className="text-3xl font-extrabold text-gray-900">수난안전시설물 점검 결과 보고서</h1>
               </div>
 
@@ -150,7 +150,7 @@ export default function ReportView() {
               </div>
 
               {/* Map Section */}
-              <div className="mb-6 border-2 border-gray-200 rounded-xl overflow-hidden h-48 bg-gray-50 relative">
+              <div className="mb-4 border-2 border-gray-200 rounded-xl overflow-hidden h-44 bg-gray-50 relative">
                 <MapContainer 
                   center={[lat, lon]} 
                   zoom={15} 
@@ -170,8 +170,8 @@ export default function ReportView() {
               </div>
 
               {/* Photos Section */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="border border-gray-300 rounded-xl p-2 bg-gray-50 h-64 flex flex-col">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="border border-gray-300 rounded-xl p-2 bg-gray-50 h-56 flex flex-col">
                   <p className="text-center font-bold text-sm text-gray-700 mb-2">외부 사진</p>
                   {insp?.externalPhotoPath ? (
                     <img src={insp.externalPhotoPath} alt="외부" className="w-full h-full object-cover rounded-lg" />
@@ -179,7 +179,7 @@ export default function ReportView() {
                     <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">사진 없음</div>
                   )}
                 </div>
-                <div className="border border-gray-300 rounded-xl p-2 bg-gray-50 h-64 flex flex-col">
+                <div className="border border-gray-300 rounded-xl p-2 bg-gray-50 h-56 flex flex-col">
                   <p className="text-center font-bold text-sm text-gray-700 mb-2">내부 사진</p>
                   {insp?.internalPhotoPath ? (
                     <img src={insp.internalPhotoPath} alt="내부" className="w-full h-full object-cover rounded-lg" />
@@ -190,7 +190,7 @@ export default function ReportView() {
               </div>
 
               {/* Items Status */}
-              <div className="mb-6">
+              <div className="mb-4">
                 <h3 className="font-bold text-gray-800 border-b-2 border-gray-800 pb-2 mb-3">장비 상태</h3>
                 <div className="grid grid-cols-2 gap-4">
                   {Object.entries(itemLabels).map(([key, label]) => {
@@ -210,9 +210,9 @@ export default function ReportView() {
               </div>
 
               {/* Notes */}
-              <div className="mb-6">
+              <div className="mb-4">
                 <h3 className="font-bold text-gray-800 border-b-2 border-gray-800 pb-2 mb-3">특이사항</h3>
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg min-h-[100px] text-gray-800 whitespace-pre-wrap">
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg min-h-[80px] text-gray-800 whitespace-pre-wrap">
                   {insp?.notes ? insp.notes : '특이사항 없음'}
                 </div>
               </div>
