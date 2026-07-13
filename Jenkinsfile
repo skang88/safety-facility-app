@@ -16,7 +16,7 @@ pipeline {
             steps {
                 script {
                     // Build and start the containers in detached mode
-                    sh 'docker-compose up -d --build'
+                    sh 'docker compose up -d --build'
                 }
             }
         }
