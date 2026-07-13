@@ -83,7 +83,6 @@ const sampleFireWaters = [
 
 const seedDatabase = async () => {
   try {
-<<<<<<< HEAD
     // 1. Create FireStation
     let station = await FireStation.findOne({ name: '의령소방서' });
     if (!station) {
