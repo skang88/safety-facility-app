@@ -218,7 +218,7 @@ export default function ReportView() {
               </div>
 
               {/* Map Section */}
-              <div className="mb-6 border-2 border-gray-200 rounded-xl overflow-hidden h-48 bg-gray-50 relative">
+              <div className="mb-4 border-2 border-gray-200 rounded-xl overflow-hidden h-44 bg-gray-50 relative">
                 <MapContainer 
                   center={[lat, lon]} 
                   zoom={15} 
@@ -278,9 +278,9 @@ export default function ReportView() {
               </div>
 
               {/* Notes */}
-              <div className="mb-6">
+              <div className="mb-4">
                 <h3 className="font-bold text-gray-800 border-b-2 border-gray-800 pb-2 mb-3">특이사항</h3>
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg min-h-[100px] text-gray-800 whitespace-pre-wrap">
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg min-h-[80px] text-gray-800 whitespace-pre-wrap">
                   {insp?.notes ? insp.notes : '특이사항 없음'}
                 </div>
               </div>

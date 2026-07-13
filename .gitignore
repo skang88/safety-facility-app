@@ -11,5 +11,4 @@ tmp_excel_reader/
 .npm-cache/
 .cache/
 logs/
-
-
+.aider*
