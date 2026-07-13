@@ -8,6 +8,9 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // Routes
+// Category Routes
+router.get('/categories', facilityController.getCategories);
+
 // Facility Routes
 router.get('/facilities', facilityController.getFacilities);
 router.post('/facilities', facilityController.createFacility);

@@ -3,6 +3,9 @@ import axios from 'axios';
 import { Camera, X, Loader2 } from 'lucide-react';
 
 export default function InspectionModal({ facility, onClose, onSuccess, initialData = null }) {
+  const category = facility?.category;
+  const inspectionFields = category?.inspectionFields || [];
+
   const [affiliation, setAffiliation] = useState(initialData?.affiliation || (facility?.region ? `${facility.region}119안전센터` : '의령119안전센터'));
   const [inspectorName, setInspectorName] = useState(initialData?.inspectorName || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
@@ -12,12 +15,17 @@ export default function InspectionModal({ facility, onClose, onSuccess, initialD
   const [internalPhotoPreview, setInternalPhotoPreview] = useState(initialData?.internalPhotoPath || null);
   const [isLoading, setIsLoading] = useState(false);
   
-  const [itemsStatus, setItemsStatus] = useState(initialData?.itemsStatus || {
-    lifebuoy: '양호',
-    lifeJacket: '양호',
-    lifeline: '양호',
-    throwBag: '양호'
-  });
+  // Build initial itemsStatus from category inspectionFields
+  const buildInitialStatus = () => {
+    if (initialData?.itemsStatus) return initialData.itemsStatus;
+    const status = {};
+    inspectionFields.forEach(field => {
+      status[field.key] = field.options?.[0] || '양호';
+    });
+    return status;
+  };
+
+  const [itemsStatus, setItemsStatus] = useState(buildInitialStatus);
 
   const externalFileInputRef = useRef(null);
   const internalFileInputRef = useRef(null);
@@ -27,14 +35,12 @@ export default function InspectionModal({ facility, onClose, onSuccess, initialD
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Create an image element to resize via canvas
         const img = new Image();
         img.onload = () => {
           const MAX_WIDTH = 1000;
           let width = img.width;
           let height = img.height;
           
-          // Resize if width is larger than MAX_WIDTH
           if (width > MAX_WIDTH) {
             height = Math.round((height * MAX_WIDTH) / width);
             width = MAX_WIDTH;
@@ -46,7 +52,6 @@ export default function InspectionModal({ facility, onClose, onSuccess, initialD
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
           
-          // Convert to jpeg blob
           canvas.toBlob((blob) => {
             const compressedFile = new File([blob], `photo-${Date.now()}.jpg`, {
               type: 'image/jpeg',
@@ -112,13 +117,8 @@ export default function InspectionModal({ facility, onClose, onSuccess, initialD
     }
   };
 
-  const statusOptions = ['양호', '불량', '없음'];
-  const itemLabels = {
-    lifebuoy: '구명환',
-    lifeJacket: '구명쪼끼',
-    lifeline: '구명줄',
-    throwBag: '드로우백'
-  };
+  // Photo labels from category or defaults
+  const photoLabels = category?.photoLabels || ['외부 사진', '내부 사진'];
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
@@ -145,6 +145,11 @@ export default function InspectionModal({ facility, onClose, onSuccess, initialD
                 <>
                   <h3 className="text-xl font-bold text-red-600 break-keep">{displayName}</h3>
                   {address && <p className="text-xs text-gray-500 mt-1">{address}</p>}
+                  {category && (
+                    <p className="text-[10px] text-gray-400 mt-0.5 bg-gray-100 inline-block px-2 py-0.5 rounded font-medium">
+                      {category.name}
+                    </p>
+                  )}
                   {facility?.location?.coordinates && (
                     <p className="text-[10px] text-gray-400 mt-0.5 font-mono">
                       좌표: {facility.location.coordinates[1].toFixed(6)}, {facility.location.coordinates[0].toFixed(6)}
@@ -196,11 +201,11 @@ export default function InspectionModal({ facility, onClose, onSuccess, initialD
                       ${externalPhotoPreview ? 'border-gray-300 bg-gray-50' : 'border-red-300 bg-red-50 hover:bg-red-100'}`}
                   >
                     {externalPhotoPreview ? (
-                      <img src={externalPhotoPreview} alt="외부 사진 미리보기" className="max-h-full mx-auto rounded shadow-sm" />
+                      <img src={externalPhotoPreview} alt={`${photoLabels[0]} 미리보기`} className="max-h-full mx-auto rounded shadow-sm" />
                     ) : (
                       <>
                         <Camera className="w-8 h-8 text-red-500 mb-1" />
-                        <span className="text-xs font-medium text-red-600">외부 사진</span>
+                        <span className="text-xs font-medium text-red-600">{photoLabels[0]}</span>
                       </>
                     )}
                   </div>
@@ -222,11 +227,11 @@ export default function InspectionModal({ facility, onClose, onSuccess, initialD
                       ${internalPhotoPreview ? 'border-gray-300 bg-gray-50' : 'border-red-300 bg-red-50 hover:bg-red-100'}`}
                   >
                     {internalPhotoPreview ? (
-                      <img src={internalPhotoPreview} alt="내부 사진 미리보기" className="max-h-full mx-auto rounded shadow-sm" />
+                      <img src={internalPhotoPreview} alt={`${photoLabels[1]} 미리보기`} className="max-h-full mx-auto rounded shadow-sm" />
                     ) : (
                       <>
                         <Camera className="w-8 h-8 text-red-500 mb-1" />
-                        <span className="text-xs font-medium text-red-600">내부 사진</span>
+                        <span className="text-xs font-medium text-red-600">{photoLabels[1]}</span>
                       </>
                     )}
                   </div>
@@ -242,36 +247,41 @@ export default function InspectionModal({ facility, onClose, onSuccess, initialD
               </div>
             </div>
 
-            {/* Items Check */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">장비 상태 확인</label>
-              <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                {Object.keys(itemsStatus).map((itemKey) => (
-                  <div key={itemKey} className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">{itemLabels[itemKey]}</span>
-                    <div className="flex space-x-2">
-                      {statusOptions.map(status => (
-                        <button
-                          key={status}
-                          type="button"
-                          onClick={() => handleStatusChange(itemKey, status)}
-                          className={`px-3 py-1.5 text-xs rounded-md border font-medium transition-colors
-                            ${itemsStatus[itemKey] === status 
-                              ? (status === '양호' ? 'bg-green-100 border-green-500 text-green-700' : 
-                                 status === '불량' ? 'bg-red-100 border-red-500 text-red-700' : 
-                                 'bg-gray-200 border-gray-400 text-gray-700')
-                              : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
-                            }
-                          `}
-                        >
-                          {status}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+            {/* Dynamic Items Check based on Category inspectionFields */}
+            {inspectionFields.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">점검 항목 상태 확인</label>
+                <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  {inspectionFields.map((field) => {
+                    const options = field.options || ['양호', '불량', '없음'];
+                    return (
+                      <div key={field.key} className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">{field.label}</span>
+                        <div className="flex space-x-1.5 flex-wrap justify-end gap-y-1">
+                          {options.map(status => (
+                            <button
+                              key={status}
+                              type="button"
+                              onClick={() => handleStatusChange(field.key, status)}
+                              className={`px-2.5 py-1.5 text-xs rounded-md border font-medium transition-colors
+                                ${itemsStatus[field.key] === status 
+                                  ? (['양호', '완료', '지정', '가능'].includes(status) ? 'bg-green-100 border-green-500 text-green-700' : 
+                                     ['불량', '정비필요', '교체대상', '철거대상', '미완료', '미지정', '불가'].includes(status) ? 'bg-red-100 border-red-500 text-red-700' : 
+                                     'bg-gray-200 border-gray-400 text-gray-700')
+                                  : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                                }
+                              `}
+                            >
+                              {status}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Notes */}
             <div>

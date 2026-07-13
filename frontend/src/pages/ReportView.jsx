@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Loader2, Printer, ArrowLeft } from 'lucide-react';
+import { Loader2, Printer, ArrowLeft, LifeBuoy, Briefcase, MapPin, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
@@ -14,17 +14,48 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function ReportView() {
+  const [categories, setCategories] = useState([]);
+  const [activeCategoryId, setActiveCategoryId] = useState('');
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [regionFilter, setRegionFilter] = useState('전체');
 
+  const getCategoryIcon = (key) => {
+    switch (key) {
+      case 'water_rescue': return <LifeBuoy className="w-4 h-4 mr-2" />;
+      case 'mountain_kit': return <Briefcase className="w-4 h-4 mr-2" />;
+      case 'mountain_sign': return <MapPin className="w-4 h-4 mr-2" />;
+      default: return <Shield className="w-4 h-4 mr-2" />;
+    }
+  };
+
   useEffect(() => {
-    fetchFacilities();
+    fetchCategories();
   }, []);
 
-  const fetchFacilities = async () => {
+  useEffect(() => {
+    if (activeCategoryId) {
+      fetchFacilities(activeCategoryId);
+    }
+  }, [activeCategoryId]);
+
+  const fetchCategories = async () => {
     try {
-      const res = await axios.get('/api/facilities');
+      const res = await axios.get('/api/categories');
+      setCategories(res.data);
+      if (res.data.length > 0) {
+        const waterCat = res.data.find(c => c.key === 'water_rescue');
+        setActiveCategoryId(waterCat ? waterCat._id : res.data[0]._id);
+      }
+    } catch (e) {
+      console.error('Failed to fetch categories:', e);
+    }
+  };
+
+  const fetchFacilities = async (catId) => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`/api/facilities?category=${catId}`);
       
       // Sort by region and name
       const regionOrder = { '의령': 1, '부림': 2, '정곡': 3 };
@@ -48,7 +79,20 @@ export default function ReportView() {
     window.print();
   };
 
-  if (loading) {
+  const activeCategory = categories.find(c => c._id === activeCategoryId);
+  const inspectionFields = activeCategory?.inspectionFields || [];
+
+  // Build dynamic itemLabels
+  const itemLabels = {};
+  inspectionFields.forEach(field => {
+    itemLabels[field.key] = field.label;
+  });
+
+  const filteredFacilities = facilities.filter(fac => 
+    regionFilter === '전체' || fac.region === regionFilter
+  );
+
+  if (loading && facilities.length === 0) {
     return (
       <div className="h-full flex items-center justify-center text-gray-500">
         <Loader2 className="w-8 h-8 animate-spin mr-2" /> 로딩중...
@@ -56,50 +100,72 @@ export default function ReportView() {
     );
   }
 
-  const itemLabels = {
-    lifebuoy: '구명환',
-    lifeJacket: '구명조끼',
-    lifeline: '구명줄',
-    throwBag: '드로우백'
-  };
-
-  const filteredFacilities = facilities.filter(fac => 
-    regionFilter === '전체' || fac.region === regionFilter
-  );
-
   return (
     <div className="bg-gray-200 min-h-screen overflow-auto print:bg-white pb-20">
       {/* Controls (Hidden in Print) */}
-      <div className="sticky top-0 bg-white shadow-sm p-4 flex justify-between items-center print:hidden z-50">
-        <div className="flex items-center">
-          <Link to="/" className="flex items-center text-gray-600 hover:text-gray-900 font-medium">
-            <ArrowLeft className="w-5 h-5 mr-1" /> 돌아가기
-          </Link>
+      <div className="sticky top-0 bg-white shadow-sm p-4 flex flex-col gap-3 print:hidden z-50">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <Link to="/" className="flex items-center text-gray-600 hover:text-gray-900 font-medium">
+              <ArrowLeft className="w-5 h-5 mr-1" /> 돌아가기
+            </Link>
+          </div>
+          <div className="flex items-center space-x-4">
+            <select 
+              value={regionFilter} 
+              onChange={(e) => setRegionFilter(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 outline-none focus:ring-2 focus:ring-red-500 text-sm font-medium"
+            >
+              <option value="전체">센터 전체</option>
+              <option value="의령">의령119안전센터</option>
+              <option value="부림">부림119안전센터</option>
+              <option value="정곡">정곡119안전센터</option>
+            </select>
+            <p className="text-sm text-gray-500 hidden sm:block">총 {filteredFacilities.length}개소 보고서</p>
+            <button 
+              onClick={handlePrint}
+              className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-sm transition-colors"
+            >
+              <Printer className="w-5 h-5 mr-2" /> PDF 저장 / 인쇄
+            </button>
+          </div>
         </div>
-        <div className="flex items-center space-x-4">
-          <select 
-            value={regionFilter} 
-            onChange={(e) => setRegionFilter(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 outline-none focus:ring-2 focus:ring-red-500 text-sm font-medium"
-          >
-            <option value="전체">센터 전체</option>
-            <option value="의령">의령119안전센터</option>
-            <option value="부림">부림119안전센터</option>
-            <option value="정곡">정곡119안전센터</option>
-          </select>
-          <p className="text-sm text-gray-500 hidden sm:block">총 {filteredFacilities.length}개소 보고서</p>
-          <button 
-            onClick={handlePrint}
-            className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-sm transition-colors"
-          >
-            <Printer className="w-5 h-5 mr-2" /> PDF 저장 / 인쇄
-          </button>
-        </div>
+
+        {/* Category Tabs */}
+        {categories.length > 0 && (
+          <div className="flex space-x-1 border-t border-gray-100 pt-3">
+            {categories.map(cat => {
+              const isActive = cat._id === activeCategoryId;
+              return (
+                <button
+                  key={cat._id}
+                  onClick={() => {
+                    setActiveCategoryId(cat._id);
+                    setRegionFilter('전체');
+                  }}
+                  className={`flex items-center px-4 py-2 font-bold text-sm transition-all rounded-lg
+                    ${isActive 
+                      ? 'bg-red-600 text-white shadow' 
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-200'
+                    }
+                  `}
+                >
+                  {getCategoryIcon(cat.key)}
+                  {cat.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Report Pages */}
       <div className="print:m-0 max-w-[800px] mx-auto mt-8 space-y-8 print:space-y-0">
-        {filteredFacilities.length === 0 ? (
+        {loading ? (
+          <div className="text-center p-10 text-gray-500 bg-white rounded-xl shadow">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" /> 데이터를 불러오는 중입니다...
+          </div>
+        ) : filteredFacilities.length === 0 ? (
           <div className="text-center p-10 text-gray-500 bg-white rounded-xl shadow print:hidden">
             해당 센터의 시설물이 없습니다.
           </div>
@@ -125,7 +191,9 @@ export default function ReportView() {
               `}</style>
 
               <div className="text-center mb-8 border-b-2 border-red-700 pb-4">
-                <h1 className="text-3xl font-extrabold text-gray-900">수난안전시설물 점검 결과 보고서</h1>
+                <h1 className="text-3xl font-extrabold text-gray-900">
+                  {activeCategory?.name || '안전시설물'} 점검 결과 보고서
+                </h1>
               </div>
 
               <div className="flex justify-between items-end mb-4">
@@ -172,7 +240,7 @@ export default function ReportView() {
               {/* Photos Section */}
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="border border-gray-300 rounded-xl p-2 bg-gray-50 h-64 flex flex-col">
-                  <p className="text-center font-bold text-sm text-gray-700 mb-2">외부 사진</p>
+                  <p className="text-center font-bold text-sm text-gray-700 mb-2">{activeCategory?.photoLabels?.[0] || '외부 사진'}</p>
                   {insp?.externalPhotoPath ? (
                     <img src={insp.externalPhotoPath} alt="외부" className="w-full h-full object-cover rounded-lg" />
                   ) : (
@@ -180,7 +248,7 @@ export default function ReportView() {
                   )}
                 </div>
                 <div className="border border-gray-300 rounded-xl p-2 bg-gray-50 h-64 flex flex-col">
-                  <p className="text-center font-bold text-sm text-gray-700 mb-2">내부 사진</p>
+                  <p className="text-center font-bold text-sm text-gray-700 mb-2">{activeCategory?.photoLabels?.[1] || '내부 사진'}</p>
                   {insp?.internalPhotoPath ? (
                     <img src={insp.internalPhotoPath} alt="내부" className="w-full h-full object-cover rounded-lg" />
                   ) : (
@@ -189,15 +257,15 @@ export default function ReportView() {
                 </div>
               </div>
 
-              {/* Items Status */}
+              {/* Dynamic Items Status */}
               <div className="mb-6">
-                <h3 className="font-bold text-gray-800 border-b-2 border-gray-800 pb-2 mb-3">장비 상태</h3>
+                <h3 className="font-bold text-gray-800 border-b-2 border-gray-800 pb-2 mb-3">점검 항목 상태</h3>
                 <div className="grid grid-cols-2 gap-4">
                   {Object.entries(itemLabels).map(([key, label]) => {
                     const status = insp?.itemsStatus?.[key] || '-';
                     let statusColor = 'text-gray-900';
-                    if (status === '양호') statusColor = 'text-green-600 font-bold';
-                    if (status === '불량') statusColor = 'text-red-600 font-bold';
+                    if (['양호', '완료', '지정'].includes(status)) statusColor = 'text-green-600 font-bold';
+                    if (['불량', '정비필요', '교체대상', '철거대상', '미완료', '미지정'].includes(status)) statusColor = 'text-red-600 font-bold';
                     
                     return (
                       <div key={key} className="flex justify-between items-center p-3 bg-gray-50 border border-gray-200 rounded-lg">

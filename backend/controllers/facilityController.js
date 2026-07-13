@@ -1,13 +1,27 @@
 const Facility = require('../models/Facility');
 const Inspection = require('../models/Inspection');
+const Category = require('../models/Category');
+const FireStation = require('../models/FireStation');
+const Center = require('../models/Center');
 const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs');
 
+// 1. Get Facilities
 exports.getFacilities = async (req, res) => {
   try {
     const currentQuarter = getCurrentQuarter();
-    const facilities = await Facility.find().lean();
+    const { fireStation, center, category, region } = req.query;
+
+    const filter = {};
+    if (fireStation) filter.fireStation = fireStation;
+    if (center) filter.center = center;
+    if (category) filter.category = category;
+    if (region && region !== '전체') filter.region = region;
+
+    const facilities = await Facility.find(filter)
+      .populate('category fireStation center')
+      .lean();
     
     // Get the most recent inspection for each facility using aggregation
     const latestInspections = await Inspection.aggregate([
@@ -44,13 +58,34 @@ exports.getFacilities = async (req, res) => {
   }
 };
 
+// 2. Create Facility
 exports.createFacility = async (req, res) => {
   try {
-    const { name, region, coordinates, baseItems } = req.body;
+    const { name, region, coordinates, baseItems, category, fireStation, center } = req.body;
     
+    let finalCategory = category;
+    let finalStation = fireStation;
+    let finalCenter = center;
+
+    if (!finalCategory) {
+      const defaultCat = await Category.findOne({ key: 'water_rescue' });
+      if (defaultCat) finalCategory = defaultCat._id;
+    }
+    if (!finalStation) {
+      const defaultStation = await FireStation.findOne({ name: '의령소방서' });
+      if (defaultStation) finalStation = defaultStation._id;
+    }
+    if (!finalCenter) {
+      const defaultCenter = await Center.findOne({ name: `${region || '의령'}119안전센터` });
+      if (defaultCenter) finalCenter = defaultCenter._id;
+    }
+
     const facility = new Facility({
       name,
-      region,
+      region: region || '의령',
+      category: finalCategory,
+      fireStation: finalStation,
+      center: finalCenter,
       location: {
         type: 'Point',
         coordinates: coordinates && coordinates.length === 2 ? coordinates : [0, 0]
@@ -59,22 +94,29 @@ exports.createFacility = async (req, res) => {
     });
 
     await facility.save();
-    res.status(201).json(facility);
+    
+    const populated = await Facility.findById(facility._id).populate('category fireStation center');
+    res.status(201).json(populated);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
+// 3. Update Facility
 exports.updateFacility = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, region, coordinates, baseItems } = req.body;
+    const { name, region, coordinates, baseItems, category, fireStation, center } = req.body;
     
     const facility = await Facility.findById(id);
     if (!facility) return res.status(404).json({ error: 'Facility not found' });
 
     if (name) facility.name = name;
     if (region) facility.region = region;
+    if (category) facility.category = category;
+    if (fireStation) facility.fireStation = fireStation;
+    if (center) facility.center = center;
+    
     if (coordinates && coordinates.length === 2) {
       facility.location = {
         type: 'Point',
@@ -82,23 +124,28 @@ exports.updateFacility = async (req, res) => {
       };
     }
     if (baseItems) {
-      facility.baseItems = { ...facility.baseItems, ...baseItems };
+      const currentItems = facility.baseItems || new Map();
+      Object.keys(baseItems).forEach(key => {
+        currentItems.set(key, baseItems[key]);
+      });
+      facility.baseItems = currentItems;
     }
 
     await facility.save();
-    res.json(facility);
+    const populated = await Facility.findById(facility._id).populate('category fireStation center');
+    res.json(populated);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
+// 4. Delete Facility
 exports.deleteFacility = async (req, res) => {
   try {
     const { id } = req.params;
     const facility = await Facility.findByIdAndDelete(id);
     if (!facility) return res.status(404).json({ error: 'Facility not found' });
     
-    // Delete related inspections to maintain referential integrity
     await Inspection.deleteMany({ facility: id });
 
     res.json({ message: 'Facility and related inspections deleted successfully' });
@@ -107,6 +154,7 @@ exports.deleteFacility = async (req, res) => {
   }
 };
 
+// 5. Get Facility Inspections
 exports.getFacilityInspections = async (req, res) => {
   try {
     const { facilityId } = req.params;
@@ -119,58 +167,75 @@ exports.getFacilityInspections = async (req, res) => {
   }
 };
 
+// 6. Get Dashboard Summary
 exports.getDashboardSummary = async (req, res) => {
   try {
-    const totalFacilities = await Facility.countDocuments();
-    const currentQuarter = getCurrentQuarter();
-    const recentInspections = await Inspection.find({ quarter: currentQuarter })
-      .populate('facility')
-      .sort({ createdAt: -1 })
-      .limit(10);
+    const { fireStation, center, category } = req.query;
     
-    const inspectedFacilities = await Inspection.distinct('facility', { quarter: currentQuarter });
+    let activeCategory = null;
+    if (category) {
+      activeCategory = await Category.findById(category);
+    } else {
+      activeCategory = await Category.findOne(); 
+    }
+
+    if (!activeCategory) {
+      return res.json({
+        totalFacilities: 0,
+        inspectionsCount: 0,
+        recentInspections: [],
+        currentQuarter: getCurrentQuarter(),
+        equipmentStats: {}
+      });
+    }
+
+    const facFilter = { category: activeCategory._id };
+    if (fireStation) facFilter.fireStation = fireStation;
+    if (center) facFilter.center = center;
+
+    const totalFacilities = await Facility.countDocuments(facFilter);
+    const targetFacilityIds = await Facility.distinct('_id', facFilter);
+
+    const currentQuarter = getCurrentQuarter();
+    const inspectedFacilities = await Inspection.distinct('facility', {
+      facility: { $in: targetFacilityIds },
+      quarter: currentQuarter
+    });
     const inspectionsCount = inspectedFacilities.length;
 
-    // Get the most recent inspection for each facility using aggregation
+    const recentInspections = await Inspection.find({
+      facility: { $in: targetFacilityIds }
+    })
+      .populate({ path: 'facility', populate: { path: 'category' } })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean();
+
     const latestInspections = await Inspection.aggregate([
+      { $match: { facility: { $in: targetFacilityIds } } },
       { $sort: { createdAt: -1 } },
       { $group: { _id: "$facility", latest: { $first: "$$ROOT" } } }
     ]);
 
-    const equipmentStats = {
-      lifebuoy: { good: 0, bad: 0, none: 0 },
-      lifeJacket: { good: 0, bad: 0, none: 0 },
-      lifeline: { good: 0, bad: 0, none: 0 },
-      throwBag: { good: 0, bad: 0, none: 0 }
-    };
+    const equipmentStats = {};
+    activeCategory.inspectionFields.forEach(field => {
+      equipmentStats[field.key] = { good: 0, bad: 0, none: 0 };
+    });
 
     latestInspections.forEach(item => {
       const status = item.latest.itemsStatus || {};
       
-      const lifebuoyVal = status.lifebuoy || '양호';
-      const lifeJacketVal = status.lifeJacket || '양호';
-      const lifelineVal = status.lifeline || '양호';
-      const throwBagVal = status.throwBag || '양호';
-
-      // lifebuoy
-      if (lifebuoyVal === '양호') equipmentStats.lifebuoy.good++;
-      else if (lifebuoyVal === '불량') equipmentStats.lifebuoy.bad++;
-      else if (lifebuoyVal === '없음') equipmentStats.lifebuoy.none++;
-      
-      // lifeJacket
-      if (lifeJacketVal === '양호') equipmentStats.lifeJacket.good++;
-      else if (lifeJacketVal === '불량') equipmentStats.lifeJacket.bad++;
-      else if (lifeJacketVal === '없음') equipmentStats.lifeJacket.none++;
-      
-      // lifeline
-      if (lifelineVal === '양호') equipmentStats.lifeline.good++;
-      else if (lifelineVal === '불량') equipmentStats.lifeline.bad++;
-      else if (lifelineVal === '없음') equipmentStats.lifeline.none++;
-      
-      // throwBag
-      if (throwBagVal === '양호') equipmentStats.throwBag.good++;
-      else if (throwBagVal === '불량') equipmentStats.throwBag.bad++;
-      else if (throwBagVal === '없음') equipmentStats.throwBag.none++;
+      activeCategory.inspectionFields.forEach(field => {
+        const val = status.get ? status.get(field.key) : status[field.key];
+        const normalizedVal = val || (field.options && field.options[0]) || '양호';
+        if (['양호', '완료', '지정'].includes(normalizedVal)) {
+          equipmentStats[field.key].good++;
+        } else if (['불량', '정비필요', '교체대상', '철거대상', '미완료', '미지정'].includes(normalizedVal)) {
+          equipmentStats[field.key].bad++;
+        } else {
+          equipmentStats[field.key].none++;
+        }
+      });
     });
 
     res.json({
@@ -178,41 +243,67 @@ exports.getDashboardSummary = async (req, res) => {
       inspectionsCount,
       recentInspections,
       currentQuarter,
-      equipmentStats
+      equipmentStats,
+      category: activeCategory
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
+// 7. Create Inspection
 exports.createInspection = async (req, res) => {
   try {
     const { facilityId } = req.params;
     const { affiliation, inspectorName, itemsStatus, notes } = req.body;
     
+    const facility = await Facility.findById(facilityId).populate('category');
+    if (!facility) return res.status(404).json({ error: 'Facility not found' });
+
     let externalPhotoPath = '';
     let internalPhotoPath = '';
+    const photos = [];
     
-    if (req.files && req.files['externalPhoto'] && req.files['internalPhoto']) {
-      const processImage = async (fileBuffer, originalname) => {
-        const filename = `optimized-${Date.now()}-${originalname}`;
-        const outputPath = path.join(__dirname, '..', 'uploads', filename);
-        await sharp(fileBuffer)
-          .resize({ width: 800, withoutEnlargement: true })
-          .jpeg({ quality: 80 })
-          .toFile(outputPath);
-        return `/uploads/${filename}`;
-      };
+    const processImage = async (fileBuffer, originalname) => {
+      const filename = `optimized-${Date.now()}-${originalname}`;
+      const outputPath = path.join(__dirname, '..', 'uploads', filename);
+      await sharp(fileBuffer)
+        .resize({ width: 800, withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toFile(outputPath);
+      return `/uploads/${filename}`;
+    };
 
-      externalPhotoPath = await processImage(req.files['externalPhoto'][0].buffer, req.files['externalPhoto'][0].originalname);
-      internalPhotoPath = await processImage(req.files['internalPhoto'][0].buffer, req.files['internalPhoto'][0].originalname);
-    } else {
-      return res.status(400).json({ error: 'External and Internal photos are required for inspection' });
+    if (req.files) {
+      if (req.files['externalPhoto']) {
+        externalPhotoPath = await processImage(req.files['externalPhoto'][0].buffer, req.files['externalPhoto'][0].originalname);
+        photos.push({ label: '외부 사진', path: externalPhotoPath });
+      }
+      if (req.files['internalPhoto']) {
+        internalPhotoPath = await processImage(req.files['internalPhoto'][0].buffer, req.files['internalPhoto'][0].originalname);
+        photos.push({ label: '내부 사진', path: internalPhotoPath });
+      }
+
+      if (Array.isArray(req.files)) {
+        for (let i = 0; i < req.files.length; i++) {
+          const file = req.files[i];
+          const path = await processImage(file.buffer, file.originalname);
+          const label = file.fieldname || `사진 ${i + 1}`;
+          photos.push({ label, path });
+          
+          if (i === 0 && !externalPhotoPath) externalPhotoPath = path;
+          if (i === 1 && !internalPhotoPath) internalPhotoPath = path;
+        }
+      }
+    }
+
+    const isRequiredPhotos = ['water_rescue', 'mountain_kit', 'mountain_sign'].includes(facility.category?.key);
+    if (isRequiredPhotos && !externalPhotoPath && !internalPhotoPath && photos.length < 2) {
+      return res.status(400).json({ error: `${facility.category?.name || '시설물'} 점검 시 사진 2장(외부, 내부)이 필수적입니다.` });
     }
 
     const currentQuarter = getCurrentQuarter();
 
-    // Parse itemsStatus if sent as string from form-data
     let parsedStatus = {};
     try {
       parsedStatus = typeof itemsStatus === 'string' ? JSON.parse(itemsStatus) : itemsStatus;
@@ -228,6 +319,7 @@ exports.createInspection = async (req, res) => {
       itemsStatus: parsedStatus,
       externalPhotoPath,
       internalPhotoPath,
+      photos,
       notes
     });
 
@@ -238,6 +330,7 @@ exports.createInspection = async (req, res) => {
   }
 };
 
+// 8. Update Inspection
 exports.updateInspection = async (req, res) => {
   try {
     const { id } = req.params;
@@ -248,23 +341,43 @@ exports.updateInspection = async (req, res) => {
 
     let externalPhotoPath = inspection.externalPhotoPath;
     let internalPhotoPath = inspection.internalPhotoPath;
+    let photos = inspection.photos || [];
+
+    const processImage = async (fileBuffer, originalname) => {
+      const filename = `optimized-${Date.now()}-${originalname}`;
+      const outputPath = path.join(__dirname, '..', 'uploads', filename);
+      await sharp(fileBuffer)
+        .resize({ width: 800, withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toFile(outputPath);
+      return `/uploads/${filename}`;
+    };
 
     if (req.files) {
-      const processImage = async (fileBuffer, originalname) => {
-        const filename = `optimized-${Date.now()}-${originalname}`;
-        const outputPath = path.join(__dirname, '..', 'uploads', filename);
-        await sharp(fileBuffer)
-          .resize({ width: 800, withoutEnlargement: true })
-          .jpeg({ quality: 80 })
-          .toFile(outputPath);
-        return `/uploads/${filename}`;
-      };
-
       if (req.files['externalPhoto']) {
         externalPhotoPath = await processImage(req.files['externalPhoto'][0].buffer, req.files['externalPhoto'][0].originalname);
+        const idx = photos.findIndex(p => p.label === '외부 사진');
+        if (idx !== -1) photos[idx].path = externalPhotoPath;
+        else photos.push({ label: '외부 사진', path: externalPhotoPath });
       }
       if (req.files['internalPhoto']) {
         internalPhotoPath = await processImage(req.files['internalPhoto'][0].buffer, req.files['internalPhoto'][0].originalname);
+        const idx = photos.findIndex(p => p.label === '내부 사진');
+        if (idx !== -1) photos[idx].path = internalPhotoPath;
+        else photos.push({ label: '내부 사진', path: internalPhotoPath });
+      }
+
+      if (Array.isArray(req.files)) {
+        photos = [];
+        for (let i = 0; i < req.files.length; i++) {
+          const file = req.files[i];
+          const path = await processImage(file.buffer, file.originalname);
+          const label = file.fieldname || `사진 ${i + 1}`;
+          photos.push({ label, path });
+          
+          if (i === 0) externalPhotoPath = path;
+          if (i === 1) internalPhotoPath = path;
+        }
       }
     }
 
@@ -283,6 +396,7 @@ exports.updateInspection = async (req, res) => {
     inspection.notes = notes !== undefined ? notes : inspection.notes;
     inspection.externalPhotoPath = externalPhotoPath;
     inspection.internalPhotoPath = internalPhotoPath;
+    inspection.photos = photos;
 
     await inspection.save();
     res.json(inspection);
@@ -291,6 +405,7 @@ exports.updateInspection = async (req, res) => {
   }
 };
 
+// 9. Delete Inspection
 exports.deleteInspection = async (req, res) => {
   try {
     const { id } = req.params;
@@ -306,7 +421,17 @@ exports.deleteInspection = async (req, res) => {
 function getCurrentQuarter() {
   const date = new Date();
   const year = date.getFullYear();
-  const month = date.getMonth(); // 0-11
+  const month = date.getMonth(); 
   const quarter = Math.floor(month / 3) + 1;
   return `${year}-Q${quarter}`;
 }
+
+// 10. Get Categories
+exports.getCategories = async (req, res) => {
+  try {
+    const categories = await Category.find({});
+    res.json(categories);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

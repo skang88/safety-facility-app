@@ -1,28 +1,120 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { AlertCircle, CheckCircle, Clock, Printer, LifeBuoy, Shield, Anchor, Package } from 'lucide-react';
+import { 
+  AlertCircle, 
+  CheckCircle, 
+  Clock, 
+  Printer, 
+  LifeBuoy, 
+  Shield, 
+  Anchor, 
+  Package, 
+  User, 
+  MapPin, 
+  Phone, 
+  Signal, 
+  Briefcase 
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import InspectionDetailModal from '../components/InspectionDetailModal';
 import InspectionModal from '../components/InspectionModal';
 
 export default function Dashboard() {
+  const [categories, setCategories] = useState([]);
+  const [activeCategoryId, setActiveCategoryId] = useState('');
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedInspection, setSelectedInspection] = useState(null);
   const [editingInspection, setEditingInspection] = useState(null);
 
-  const equipmentNames = {
+  // Dynamic icon and style mapping for fields
+  const fieldIcons = {
+    // Water Rescue
     lifebuoy: { label: '구명환', icon: LifeBuoy, color: 'text-blue-600 bg-blue-100' },
     lifeJacket: { label: '구명조끼', icon: Shield, color: 'text-emerald-600 bg-emerald-100' },
     lifeline: { label: '구명줄', icon: Anchor, color: 'text-violet-600 bg-violet-100' },
-    throwBag: { label: '드로우백', icon: Package, color: 'text-amber-600 bg-amber-100' }
+    throwBag: { label: '드로우백', icon: Package, color: 'text-amber-600 bg-amber-100' },
+    
+    // Mountain Kit
+    boxStatus: { label: '함 관리상태', icon: Package, color: 'text-blue-600 bg-blue-100' },
+    drugStatus: { label: '구급약품 상태', icon: Shield, color: 'text-emerald-600 bg-emerald-100' },
+    improvement: { label: '개선여부', icon: CheckCircle, color: 'text-violet-600 bg-violet-100' },
+    manager: { label: '전담관리자 지정', icon: User, color: 'text-amber-600 bg-amber-100' },
+    
+    // Mountain Sign
+    signStatus: { label: '표지판 관리상태', icon: MapPin, color: 'text-blue-600 bg-blue-100' },
+    sktSignal: { label: 'SKT 통신상태', icon: Signal, color: 'text-emerald-600 bg-emerald-100' },
+    ktSignal: { label: 'KT 통신상태', icon: Signal, color: 'text-violet-600 bg-violet-100' },
+    lguSignal: { label: 'LGU+ 통신상태', icon: Signal, color: 'text-amber-600 bg-amber-100' }
   };
 
-  const stats = summary?.equipmentStats || {
-    lifebuoy: { good: 0, bad: 0, none: 0 },
-    lifeJacket: { good: 0, bad: 0, none: 0 },
-    lifeline: { good: 0, bad: 0, none: 0 },
-    throwBag: { good: 0, bad: 0, none: 0 }
+  const getCategoryIcon = (key) => {
+    switch (key) {
+      case 'water_rescue': return <LifeBuoy className="w-4 h-4 mr-2" />;
+      case 'mountain_kit': return <Briefcase className="w-4 h-4 mr-2" />;
+      case 'mountain_sign': return <MapPin className="w-4 h-4 mr-2" />;
+      default: return <Shield className="w-4 h-4 mr-2" />;
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    if (activeCategoryId) {
+      fetchSummary(activeCategoryId);
+    }
+  }, [activeCategoryId]);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await axios.get('/api/categories');
+      setCategories(res.data);
+      if (res.data.length > 0) {
+        const waterCat = res.data.find(c => c.key === 'water_rescue');
+        setActiveCategoryId(waterCat ? waterCat._id : res.data[0]._id);
+      }
+    } catch (e) {
+      console.error('Failed to fetch categories:', e);
+    }
+  };
+
+  const fetchSummary = async (catId) => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`/api/dashboard-summary?category=${catId}`);
+      setSummary(res.data);
+    } catch (error) {
+      console.error('Failed to fetch summary:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('정말 삭제하시겠습니까?')) {
+      try {
+        await axios.delete(`/api/inspections/${id}`);
+        setSelectedInspection(null);
+        if (activeCategoryId) fetchSummary(activeCategoryId);
+        alert('삭제되었습니다.');
+      } catch (error) {
+        console.error('Failed to delete inspection:', error);
+        alert('삭제에 실패했습니다.');
+      }
+    }
+  };
+
+  const handleEdit = (inspection) => {
+    setSelectedInspection(null);
+    setEditingInspection(inspection);
+  };
+
+  const handleEditComplete = () => {
+    setEditingInspection(null);
+    if (activeCategoryId) fetchSummary(activeCategoryId);
+    alert('수정되었습니다.');
   };
 
   const renderStackedBar = (itemStats) => {
@@ -52,67 +144,34 @@ export default function Dashboard() {
           <div 
             className="bg-red-500 h-full transition-all duration-500" 
             style={{ width: `${badPercent}%` }}
-            title={`불량: ${bad}개 (${Math.round(badPercent)}%)`}
+            title={`불량/미흡: ${bad}개 (${Math.round(badPercent)}%)`}
           />
         )}
         {none > 0 && (
           <div 
             className="bg-gray-400 h-full transition-all duration-500" 
             style={{ width: `${nonePercent}%` }}
-            title={`없음: ${none}개 (${Math.round(nonePercent)}%)`}
+            title={`없음/기타: ${none}개 (${Math.round(nonePercent)}%)`}
           />
         )}
       </div>
     );
   };
 
-  useEffect(() => {
-    fetchSummary();
-  }, []);
+  if (loading && !summary) return <div className="p-8 text-center text-gray-500">로딩중...</div>;
 
-  const fetchSummary = async () => {
-    try {
-      const res = await axios.get('/api/dashboard-summary');
-      setSummary(res.data);
-    } catch (error) {
-      console.error('Failed to fetch summary:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm('정말 삭제하시겠습니까?')) {
-      try {
-        await axios.delete(`/api/inspections/${id}`);
-        setSelectedInspection(null);
-        fetchSummary();
-        alert('삭제되었습니다.');
-      } catch (error) {
-        console.error('Failed to delete inspection:', error);
-        alert('삭제에 실패했습니다.');
-      }
-    }
-  };
-
-  const handleEdit = (inspection) => {
-    setSelectedInspection(null);
-    setEditingInspection(inspection);
-  };
-
-  const handleEditComplete = () => {
-    setEditingInspection(null);
-    fetchSummary();
-    alert('수정되었습니다.');
-  };
-
-  if (loading) return <div className="p-8 text-center text-gray-500">로딩중...</div>;
+  const currentCategory = summary?.category;
+  const stats = summary?.equipmentStats || {};
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Title Area */}
         <div className="flex justify-between items-center flex-wrap gap-4">
-          <h1 className="text-2xl font-bold text-gray-800">수난안전시설물 점검 현황 및 통계</h1>
+          <h1 className="text-2xl font-bold text-gray-800">
+            {currentCategory?.name || '안전시설물'} 점검 현황 및 통계
+          </h1>
           <Link 
             to="/report" 
             className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-sm text-sm transition-colors"
@@ -121,145 +180,182 @@ export default function Dashboard() {
             점검 결과 보고서 출력
           </Link>
         </div>
-        
-        {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex items-center space-x-4">
-            <div className="p-3 bg-blue-100 text-blue-600 rounded-full">
-              <CheckCircle className="w-8 h-8" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">전체 시설물</p>
-              <p className="text-3xl font-bold text-gray-900">{summary?.totalFacilities || 0}</p>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex items-center space-x-4">
-            <div className="p-3 bg-green-100 text-green-600 rounded-full">
-              <AlertCircle className="w-8 h-8" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">
-                {summary?.currentQuarter 
-                  ? `${summary.currentQuarter.split('-Q')[0]}년 ${summary.currentQuarter.split('-Q')[1]}분기`
-                  : '이번 분기'} 점검 완료
-              </p>
-              <p className="text-3xl font-bold text-gray-900">{summary?.inspectionsCount || 0}</p>
-            </div>
-          </div>
-        </div>
 
-        {/* Progress Bar */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <div className="flex justify-between items-end mb-2">
-            <h2 className="text-lg font-semibold text-gray-800">점검 진행률</h2>
-            <span className="text-sm font-medium text-gray-600">
-              {summary?.totalFacilities ? Math.round((summary.inspectionsCount / summary.totalFacilities) * 100) : 0}%
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
-            <div 
-              className="bg-green-500 h-2.5 rounded-full transition-all duration-500" 
-              style={{ width: `${summary?.totalFacilities ? Math.round((summary.inspectionsCount / summary.totalFacilities) * 100) : 0}%` }}
-            ></div>
-          </div>
-          <p className="text-xs text-gray-500 mt-2 text-right">
-            {summary?.totalFacilities || 0}개소 중 {summary?.inspectionsCount || 0}개소 완료
-          </p>
-        </div>
-
-        {/* Equipment Stats */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-            <span className="inline-block w-2.5 h-2.5 bg-blue-600 rounded-full mr-2"></span>
-            장비 상태 통계 <span className="text-xs font-normal text-gray-500 ml-2">(최근 점검 결과 기준)</span>
-          </h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {Object.entries(equipmentNames).map(([key, item]) => {
-              const itemStats = stats[key] || { good: 0, bad: 0, none: 0 };
-              const total = itemStats.good + itemStats.bad + itemStats.none;
-              const IconComponent = item.icon;
-
+        {/* Category Switcher Tabs */}
+        {categories.length > 0 && (
+          <div className="flex border-b border-gray-200 bg-white p-1 rounded-xl shadow-sm space-x-1">
+            {categories.map(cat => {
+              const isActive = cat._id === activeCategoryId;
               return (
-                <div 
-                  key={key} 
-                  className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:-translate-y-1 hover:shadow-md transition-all duration-300 flex flex-col justify-between"
+                <button
+                  key={cat._id}
+                  onClick={() => setActiveCategoryId(cat._id)}
+                  className={`flex items-center px-4 py-2.5 font-bold text-sm transition-all rounded-lg
+                    ${isActive 
+                      ? 'bg-red-600 text-white shadow' 
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }
+                  `}
                 >
-                  <div className="flex items-center space-x-3 mb-3">
-                    <div className={`p-2 rounded-lg ${item.color}`}>
-                      <IconComponent className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{item.label}</h3>
-                      <p className="text-xs text-gray-500">총 {total}개소 점검</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {renderStackedBar(itemStats)}
-                    
-                    <div className="grid grid-cols-3 gap-1 text-center text-xs">
-                      <div className="bg-green-50/50 border border-green-100 rounded px-1 py-1">
-                        <span className="block text-gray-500 text-[10px]">양호</span>
-                        <span className="font-bold text-green-600 text-xs sm:text-sm">{itemStats.good}</span>
-                      </div>
-                      <div className={`border rounded px-1 py-1 ${itemStats.bad > 0 ? 'bg-red-50 border-red-200' : 'bg-red-50/30 border-red-100'}`}>
-                        <span className="block text-gray-500 text-[10px]">불량</span>
-                        <span className={`font-bold text-xs sm:text-sm ${itemStats.bad > 0 ? 'text-red-600 font-extrabold' : 'text-gray-400'}`}>{itemStats.bad}</span>
-                      </div>
-                      <div className="bg-gray-50 border border-gray-100 rounded px-1 py-1">
-                        <span className="block text-gray-500 text-[10px]">없음</span>
-                        <span className="font-bold text-gray-600 text-xs sm:text-sm">{itemStats.none}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  {getCategoryIcon(cat.key)}
+                  {cat.name}
+                </button>
               );
             })}
           </div>
-        </div>
+        )}
 
-        {/* Recent Inspections */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 flex items-center space-x-2">
-            <Clock className="w-5 h-5 text-gray-500" />
-            <h2 className="text-lg font-semibold text-gray-800">최근 점검 결과</h2>
+        {loading ? (
+          <div className="p-16 text-center text-gray-500 bg-white rounded-xl shadow-sm border border-gray-100">
+            데이터를 업데이트하는 중입니다...
           </div>
-          
-          <div className="divide-y divide-gray-100">
-            {summary?.recentInspections?.length > 0 ? (
-              summary.recentInspections.map((insp) => (
-                <div 
-                  key={insp._id} 
-                  className="p-4 sm:flex sm:items-center sm:justify-between hover:bg-gray-50 transition cursor-pointer"
-                  onClick={() => setSelectedInspection(insp)}
-                >
-                  <div className="flex space-x-4 items-start">
-                    {insp.externalPhotoPath && (
-                      <img src={insp.externalPhotoPath} alt="점검 사진" className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
-                    )}
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{insp.facility?.name}</h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {insp.affiliation} {insp.inspectorName} 점검
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {new Date(insp.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 sm:mt-0 text-sm">
-                    {/* Simplified status display */}
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full font-medium bg-green-100 text-green-800">
-                      점검완료
-                    </span>
-                  </div>
+        ) : (
+          <>
+            {/* Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex items-center space-x-4">
+                <div className="p-3 bg-blue-100 text-blue-600 rounded-full">
+                  <CheckCircle className="w-8 h-8" />
                 </div>
-              ))
-            ) : (
-              <div className="p-8 text-center text-gray-500">최근 점검 내역이 없습니다.</div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">전체 {currentCategory?.name}</p>
+                  <p className="text-3xl font-bold text-gray-900">{summary?.totalFacilities || 0}</p>
+                </div>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex items-center space-x-4">
+                <div className="p-3 bg-green-100 text-green-600 rounded-full">
+                  <AlertCircle className="w-8 h-8" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">
+                    {summary?.currentQuarter 
+                      ? `${summary.currentQuarter.split('-Q')[0]}년 ${summary.currentQuarter.split('-Q')[1]}분기`
+                      : '이번 분기'} 점검 완료
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900">{summary?.inspectionsCount || 0}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <div className="flex justify-between items-end mb-2">
+                <h2 className="text-lg font-semibold text-gray-800">점검 진행률</h2>
+                <span className="text-sm font-medium text-gray-600">
+                  {summary?.totalFacilities ? Math.round((summary.inspectionsCount / summary.totalFacilities) * 100) : 0}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-green-500 h-2.5 rounded-full transition-all duration-500" 
+                  style={{ width: `${summary?.totalFacilities ? Math.round((summary.inspectionsCount / summary.totalFacilities) * 100) : 0}%` }}
+                ></div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2 text-right">
+                {summary?.totalFacilities || 0}개소 중 {summary?.inspectionsCount || 0}개소 완료
+              </p>
+            </div>
+
+            {/* Equipment Stats */}
+            {currentCategory?.inspectionFields?.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 space-y-4">
+                <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                  <span className="inline-block w-2.5 h-2.5 bg-blue-600 rounded-full mr-2"></span>
+                  장비 상태 통계 <span className="text-xs font-normal text-gray-500 ml-2">(최근 점검 결과 기준)</span>
+                </h2>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {currentCategory.inspectionFields.map((field) => {
+                    const key = field.key;
+                    const itemStats = stats[key] || { good: 0, bad: 0, none: 0 };
+                    const total = itemStats.good + itemStats.bad + itemStats.none;
+                    const fieldConf = fieldIcons[key] || { label: field.label, icon: Shield, color: 'text-gray-600 bg-gray-100' };
+                    const IconComponent = fieldConf.icon;
+
+                    return (
+                      <div 
+                        key={key} 
+                        className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:-translate-y-1 hover:shadow-md transition-all duration-300 flex flex-col justify-between"
+                      >
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className={`p-2 rounded-lg ${fieldConf.color} shrink-0`}>
+                            <IconComponent className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{fieldConf.label}</h3>
+                            <p className="text-xs text-gray-500">총 {total}개소 점검</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          {renderStackedBar(itemStats)}
+                          
+                          <div className="grid grid-cols-3 gap-1 text-center text-xs">
+                            <div className="bg-green-50/50 border border-green-100 rounded px-1 py-1">
+                              <span className="block text-gray-500 text-[9px] truncate">양호/지정</span>
+                              <span className="font-bold text-green-600 text-xs sm:text-sm">{itemStats.good}</span>
+                            </div>
+                            <div className={`border rounded px-1 py-1 ${itemStats.bad > 0 ? 'bg-red-50 border-red-200' : 'bg-red-50/30 border-red-100'}`}>
+                              <span className="block text-gray-500 text-[9px] truncate">정비필요</span>
+                              <span className={`font-bold text-xs sm:text-sm ${itemStats.bad > 0 ? 'text-red-600 font-extrabold' : 'text-gray-400'}`}>{itemStats.bad}</span>
+                            </div>
+                            <div className="bg-gray-50 border border-gray-100 rounded px-1 py-1">
+                              <span className="block text-gray-500 text-[9px] truncate">없음/기타</span>
+                              <span className="font-bold text-gray-600 text-xs sm:text-sm">{itemStats.none}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
-          </div>
-        </div>
+
+            {/* Recent Inspections */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-4 border-b border-gray-100 flex items-center space-x-2">
+                <Clock className="w-5 h-5 text-gray-500" />
+                <h2 className="text-lg font-semibold text-gray-800">최근 점검 결과</h2>
+              </div>
+              
+              <div className="divide-y divide-gray-100">
+                {summary?.recentInspections?.length > 0 ? (
+                  summary.recentInspections.map((insp) => (
+                    <div 
+                      key={insp._id} 
+                      className="p-4 sm:flex sm:items-center sm:justify-between hover:bg-gray-50 transition cursor-pointer"
+                      onClick={() => setSelectedInspection(insp)}
+                    >
+                      <div className="flex space-x-4 items-start">
+                        {insp.externalPhotoPath ? (
+                          <img src={insp.externalPhotoPath} alt="점검 사진" className="w-16 h-16 object-cover rounded-lg border border-gray-200 shrink-0" />
+                        ) : (
+                          <div className="w-16 h-16 bg-gray-100 flex items-center justify-center text-gray-400 rounded-lg border border-gray-200 text-xs shrink-0">사진없음</div>
+                        )}
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{insp.facility?.name}</h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {insp.affiliation} {insp.inspectorName} 점검
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {new Date(insp.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-4 sm:mt-0 text-sm shrink-0">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full font-medium bg-green-100 text-green-800">
+                          점검완료
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center text-gray-500">최근 점검 내역이 없습니다.</div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {selectedInspection && (

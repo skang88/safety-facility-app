@@ -16,7 +16,7 @@ services:
       - "5050:5000"
     volumes:
       - ./backend:/app
-      - ./uploads:/app/uploads
+      - backend-uploads:/app/uploads
       - /app/node_modules
     environment:
       - PORT=5000
@@ -38,3 +38,4 @@ services:
 
 volumes:
   mongo-data:
+  backend-uploads:

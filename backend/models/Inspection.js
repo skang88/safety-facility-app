@@ -6,13 +6,16 @@ const inspectionSchema = new mongoose.Schema({
   inspectorName: { type: String, required: true }, // 이름
   quarter: { type: String, required: true }, // e.g. "2024-Q4"
   itemsStatus: {
-    lifebuoy: { type: String, enum: ['양호', '불량', '없음'], default: '양호' },
-    lifeJacket: { type: String, enum: ['양호', '불량', '없음'], default: '양호' },
-    lifeline: { type: String, enum: ['양호', '불량', '없음'], default: '양호' },
-    throwBag: { type: String, enum: ['양호', '불량', '없음'], default: '양호' }
+    type: Map,
+    of: String,
+    default: {}
   },
-  externalPhotoPath: { type: String, required: true }, // 외부 사진
-  internalPhotoPath: { type: String, required: true }, // 내부 사진
+  externalPhotoPath: { type: String }, // 호환성 유지
+  internalPhotoPath: { type: String }, // 호환성 유지
+  photos: [{
+    label: { type: String },
+    path: { type: String }
+  }],
   notes: { type: String }
 }, { timestamps: true });
 

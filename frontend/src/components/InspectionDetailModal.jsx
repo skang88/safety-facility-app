@@ -7,12 +7,21 @@ export default function InspectionDetailModal({ inspection: initialInspection, o
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  const category = inspection?.facility?.category;
+  const inspectionFields = category?.inspectionFields || [];
+  const photoLabels = category?.photoLabels || ['외부 사진', '내부 사진'];
+
+  // Build dynamic itemLabels from category inspectionFields
+  const itemLabels = {};
+  inspectionFields.forEach(field => {
+    itemLabels[field.key] = field.label;
+  });
+
   useEffect(() => {
     if (inspection?.facility?._id) {
       setLoadingHistory(true);
       axios.get(`/api/facilities/${inspection.facility._id}/inspections`)
         .then(res => {
-          // Attach facility object to each history item so it works when viewing them
           const historyData = res.data.map(insp => ({
             ...insp,
             facility: inspection.facility
@@ -26,29 +35,18 @@ export default function InspectionDetailModal({ inspection: initialInspection, o
 
   if (!inspection) return null;
 
-  const itemLabels = {
-    lifebuoy: '구명환',
-    lifeJacket: '구명쪼끼',
-    lifeline: '구명줄',
-    throwBag: '드로우백'
-  };
-
   const getStatusIcon = (status) => {
-    switch (status) {
-      case '양호': return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case '불량': return <AlertTriangle className="w-5 h-5 text-red-500" />;
-      case '없음': return <XCircle className="w-5 h-5 text-gray-500" />;
-      default: return null;
-    }
+    if (['양호', '완료', '지정'].includes(status)) return <CheckCircle className="w-5 h-5 text-green-500" />;
+    if (['불량', '정비필요', '교체대상', '철거대상', '미완료', '미지정'].includes(status)) return <AlertTriangle className="w-5 h-5 text-red-500" />;
+    if (['없음', '부족'].includes(status)) return <XCircle className="w-5 h-5 text-gray-500" />;
+    return null;
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case '양호': return 'text-green-700 bg-green-50 border-green-200';
-      case '불량': return 'text-red-700 bg-red-50 border-red-200';
-      case '없음': return 'text-gray-700 bg-gray-50 border-gray-200';
-      default: return 'text-gray-700 bg-white';
-    }
+    if (['양호', '완료', '지정'].includes(status)) return 'text-green-700 bg-green-50 border-green-200';
+    if (['불량', '정비필요', '교체대상', '철거대상', '미완료', '미지정'].includes(status)) return 'text-red-700 bg-red-50 border-red-200';
+    if (['없음', '부족'].includes(status)) return 'text-gray-700 bg-gray-50 border-gray-200';
+    return 'text-gray-700 bg-white';
   };
 
   return (
@@ -76,6 +74,9 @@ export default function InspectionDetailModal({ inspection: initialInspection, o
               }
               return null;
             })()}
+            {category && (
+              <span className="inline-block text-[10px] text-white bg-red-600 px-2 py-0.5 rounded mt-1 font-medium">{category.name}</span>
+            )}
             {inspection.facility?.location?.coordinates && (
               <p className="text-[10px] text-gray-400 mt-0.5 font-mono">
                 좌표: {inspection.facility.location.coordinates[1].toFixed(6)}, {inspection.facility.location.coordinates[0].toFixed(6)}
@@ -97,12 +98,12 @@ export default function InspectionDetailModal({ inspection: initialInspection, o
           {/* Photos Section */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm font-bold text-gray-700 mb-2">외부 사진</p>
+              <p className="text-sm font-bold text-gray-700 mb-2">{photoLabels[0]}</p>
               {inspection.externalPhotoPath ? (
                 <a href={inspection.externalPhotoPath} target="_blank" rel="noopener noreferrer">
                   <img 
                     src={inspection.externalPhotoPath} 
-                    alt="외부 사진" 
+                    alt={photoLabels[0]} 
                     className="w-full h-48 object-cover rounded-xl border border-gray-200 shadow-sm hover:opacity-90 transition"
                   />
                 </a>
@@ -113,12 +114,12 @@ export default function InspectionDetailModal({ inspection: initialInspection, o
               )}
             </div>
             <div>
-              <p className="text-sm font-bold text-gray-700 mb-2">내부 사진</p>
+              <p className="text-sm font-bold text-gray-700 mb-2">{photoLabels[1]}</p>
               {inspection.internalPhotoPath ? (
                 <a href={inspection.internalPhotoPath} target="_blank" rel="noopener noreferrer">
                   <img 
                     src={inspection.internalPhotoPath} 
-                    alt="내부 사진" 
+                    alt={photoLabels[1]} 
                     className="w-full h-48 object-cover rounded-xl border border-gray-200 shadow-sm hover:opacity-90 transition"
                   />
                 </a>
@@ -154,26 +155,28 @@ export default function InspectionDetailModal({ inspection: initialInspection, o
             </div>
           </div>
 
-          {/* Item Status Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-              <h3 className="font-bold text-gray-800 text-sm">장비 상태</h3>
-            </div>
-            <div className="p-4 grid grid-cols-2 gap-3">
-              {Object.entries(itemLabels).map(([key, label]) => {
-                const status = inspection.itemsStatus?.[key] || '확인불가';
-                return (
-                  <div key={key} className={`flex items-center justify-between p-3 rounded-lg border ${getStatusColor(status)}`}>
-                    <span className="font-medium text-sm">{label}</span>
-                    <div className="flex items-center space-x-1.5">
-                      <span className="text-sm font-bold">{status}</span>
-                      {getStatusIcon(status)}
+          {/* Dynamic Item Status Card */}
+          {Object.keys(itemLabels).length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                <h3 className="font-bold text-gray-800 text-sm">점검 항목 상태</h3>
+              </div>
+              <div className="p-4 grid grid-cols-2 gap-3">
+                {Object.entries(itemLabels).map(([key, label]) => {
+                  const status = inspection.itemsStatus?.[key] || '확인불가';
+                  return (
+                    <div key={key} className={`flex items-center justify-between p-3 rounded-lg border ${getStatusColor(status)}`}>
+                      <span className="font-medium text-sm">{label}</span>
+                      <div className="flex items-center space-x-1.5">
+                        <span className="text-sm font-bold">{status}</span>
+                        {getStatusIcon(status)}
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Notes Card */}
           {inspection.notes && (

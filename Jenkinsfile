@@ -15,9 +15,6 @@ pipeline {
         stage('Build & Deploy Containers') {
             steps {
                 script {
-                    // Create uploads directory if it doesn't exist to ensure permissions
-                    sh 'mkdir -p uploads'
-                    
                     // Build and start the containers in detached mode
                     sh 'docker-compose up -d --build'
                 }

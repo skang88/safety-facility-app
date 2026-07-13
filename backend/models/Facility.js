@@ -1,12 +1,15 @@
 const mongoose = require('mongoose');
 
 const facilitySchema = new mongoose.Schema({
+  category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
+  fireStation: { type: mongoose.Schema.Types.ObjectId, ref: 'FireStation', required: true },
+  center: { type: mongoose.Schema.Types.ObjectId, ref: 'Center', required: true },
   name: { type: String, required: true },
-  region: { type: String, required: true, enum: ['의령', '부림', '정곡'] },
+  region: { type: String, required: true }, // 호환성 유지: '의령', '부림', '정곡' 등
   location: {
     type: {
-      type: String, // Don't do `{ location: { type: String } }`
-      enum: ['Point'], // 'location.type' must be 'Point'
+      type: String,
+      enum: ['Point'],
       required: true
     },
     coordinates: {
@@ -15,10 +18,9 @@ const facilitySchema = new mongoose.Schema({
     }
   },
   baseItems: {
-    lifebuoy: { type: Number, default: 0 },   // 구명환
-    lifeJacket: { type: Number, default: 0 }, // 구명쪼끼
-    lifeline: { type: Number, default: 0 },   // 구명줄
-    throwBag: { type: Number, default: 0 }    // 드로우백
+    type: Map,
+    of: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 }, { timestamps: true });
 

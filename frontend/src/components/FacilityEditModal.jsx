@@ -3,6 +3,9 @@ import axios from 'axios';
 import { X, Loader2, MapPin } from 'lucide-react';
 
 export default function FacilityEditModal({ facility, onClose, onSuccess }) {
+  const category = facility?.category;
+  const baseItemFields = category?.baseItemFields || [];
+
   const [name, setName] = useState(facility?.name || '');
   const [region, setRegion] = useState(facility?.region || '의령');
   
@@ -10,8 +13,23 @@ export default function FacilityEditModal({ facility, onClose, onSuccess }) {
   const [longitude, setLongitude] = useState(facility?.location?.coordinates?.[0]?.toString() || '');
   const [latitude, setLatitude] = useState(facility?.location?.coordinates?.[1]?.toString() || '');
   
+  // Dynamic base items from category
+  const buildInitialBaseItems = () => {
+    const items = {};
+    baseItemFields.forEach(field => {
+      const val = facility?.baseItems?.[field.key];
+      items[field.key] = val !== undefined && val !== null ? String(val) : '';
+    });
+    return items;
+  };
+  const [baseItems, setBaseItems] = useState(buildInitialBaseItems);
+
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const handleBaseItemChange = (key, value) => {
+    setBaseItems(prev => ({ ...prev, [key]: value }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,12 +55,24 @@ export default function FacilityEditModal({ facility, onClose, onSuccess }) {
       }
     }
 
+    // Convert base items to proper types
+    const processedBaseItems = {};
+    baseItemFields.forEach(field => {
+      const raw = baseItems[field.key];
+      if (field.type === 'number') {
+        processedBaseItems[field.key] = raw ? Number(raw) : 0;
+      } else {
+        processedBaseItems[field.key] = raw || '';
+      }
+    });
+
     setIsLoading(true);
     try {
       await axios.put(`/api/facilities/${facility._id}`, {
         name,
         region,
-        coordinates: [lngVal, latVal] // GeoJSON format: [longitude, latitude]
+        coordinates: [lngVal, latVal], // GeoJSON format: [longitude, latitude]
+        baseItems: processedBaseItems
       });
       onSuccess();
     } catch (error) {
@@ -64,7 +94,7 @@ export default function FacilityEditModal({ facility, onClose, onSuccess }) {
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
           <div className="flex items-center text-red-600 gap-2">
             <MapPin className="w-5 h-5" />
-            <h2 className="text-lg font-bold text-gray-800">시설물 정보 및 좌표 수정</h2>
+            <h2 className="text-lg font-bold text-gray-800">시설물 정보 수정</h2>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X className="w-6 h-6" />
@@ -77,6 +107,12 @@ export default function FacilityEditModal({ facility, onClose, onSuccess }) {
             {errorMessage && (
               <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm font-medium">
                 {errorMessage}
+              </div>
+            )}
+
+            {category && (
+              <div className="text-center">
+                <span className="inline-block text-[11px] text-white bg-red-600 px-2 py-0.5 rounded font-medium">{category.name}</span>
               </div>
             )}
 
@@ -143,6 +179,30 @@ export default function FacilityEditModal({ facility, onClose, onSuccess }) {
                 />
               </div>
             </div>
+
+            {/* Dynamic Base Item Fields */}
+            {baseItemFields.length > 0 && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  시설물 상세 정보
+                </label>
+                <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  {baseItemFields.map(field => (
+                    <div key={field.key}>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{field.label}</label>
+                      <input
+                        type={field.type === 'number' ? 'number' : 'text'}
+                        step={field.type === 'number' ? 'any' : undefined}
+                        value={baseItems[field.key] || ''}
+                        onChange={(e) => handleBaseItemChange(field.key, e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none text-sm transition-all"
+                        disabled={isLoading}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
               <p className="text-xs text-blue-700 leading-relaxed">

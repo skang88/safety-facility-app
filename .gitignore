@@ -3,7 +3,13 @@ node_modules/
 uploads/
 backend/uploads/
 *.xlsx
+*.csv
 .env
 dist/
 build/
 tmp_excel_reader/
+.npm-cache/
+.cache/
+logs/
+
+
