@@ -3,9 +3,8 @@ const Inspection = require('../models/Inspection');
 const Category = require('../models/Category');
 const FireStation = require('../models/FireStation');
 const Center = require('../models/Center');
-const sharp = require('sharp');
-const path = require('path');
-const fs = require('fs');
+const { getCurrentQuarter } = require('../utils/dateHelper');
+const { processAndSaveImage } = require('../utils/imageProcessor');
 
 // 1. Get Facilities
 exports.getFacilities = async (req, res) => {
@@ -263,31 +262,23 @@ exports.createInspection = async (req, res) => {
     let externalPhotoPath = '';
     let internalPhotoPath = '';
     const photos = [];
-    
-    const processImage = async (fileBuffer, originalname) => {
-      const filename = `optimized-${Date.now()}-${originalname}`;
-      const outputPath = path.join(__dirname, '..', 'uploads', filename);
-      await sharp(fileBuffer)
-        .resize({ width: 800, withoutEnlargement: true })
-        .jpeg({ quality: 80 })
-        .toFile(outputPath);
-      return `/uploads/${filename}`;
-    };
 
     if (req.files) {
       if (req.files['externalPhoto']) {
-        externalPhotoPath = await processImage(req.files['externalPhoto'][0].buffer, req.files['externalPhoto'][0].originalname);
+        const file = req.files['externalPhoto'][0];
+        externalPhotoPath = await processAndSaveImage(file.buffer, file.originalname);
         photos.push({ label: '외부 사진', path: externalPhotoPath });
       }
       if (req.files['internalPhoto']) {
-        internalPhotoPath = await processImage(req.files['internalPhoto'][0].buffer, req.files['internalPhoto'][0].originalname);
+        const file = req.files['internalPhoto'][0];
+        internalPhotoPath = await processAndSaveImage(file.buffer, file.originalname);
         photos.push({ label: '내부 사진', path: internalPhotoPath });
       }
 
       if (Array.isArray(req.files)) {
         for (let i = 0; i < req.files.length; i++) {
           const file = req.files[i];
-          const path = await processImage(file.buffer, file.originalname);
+          const path = await processAndSaveImage(file.buffer, file.originalname);
           const label = file.fieldname || `사진 ${i + 1}`;
           photos.push({ label, path });
           
@@ -343,25 +334,17 @@ exports.updateInspection = async (req, res) => {
     let internalPhotoPath = inspection.internalPhotoPath;
     let photos = inspection.photos || [];
 
-    const processImage = async (fileBuffer, originalname) => {
-      const filename = `optimized-${Date.now()}-${originalname}`;
-      const outputPath = path.join(__dirname, '..', 'uploads', filename);
-      await sharp(fileBuffer)
-        .resize({ width: 800, withoutEnlargement: true })
-        .jpeg({ quality: 80 })
-        .toFile(outputPath);
-      return `/uploads/${filename}`;
-    };
-
     if (req.files) {
       if (req.files['externalPhoto']) {
-        externalPhotoPath = await processImage(req.files['externalPhoto'][0].buffer, req.files['externalPhoto'][0].originalname);
+        const file = req.files['externalPhoto'][0];
+        externalPhotoPath = await processAndSaveImage(file.buffer, file.originalname);
         const idx = photos.findIndex(p => p.label === '외부 사진');
         if (idx !== -1) photos[idx].path = externalPhotoPath;
         else photos.push({ label: '외부 사진', path: externalPhotoPath });
       }
       if (req.files['internalPhoto']) {
-        internalPhotoPath = await processImage(req.files['internalPhoto'][0].buffer, req.files['internalPhoto'][0].originalname);
+        const file = req.files['internalPhoto'][0];
+        internalPhotoPath = await processAndSaveImage(file.buffer, file.originalname);
         const idx = photos.findIndex(p => p.label === '내부 사진');
         if (idx !== -1) photos[idx].path = internalPhotoPath;
         else photos.push({ label: '내부 사진', path: internalPhotoPath });
@@ -371,7 +354,7 @@ exports.updateInspection = async (req, res) => {
         photos = [];
         for (let i = 0; i < req.files.length; i++) {
           const file = req.files[i];
-          const path = await processImage(file.buffer, file.originalname);
+          const path = await processAndSaveImage(file.buffer, file.originalname);
           const label = file.fieldname || `사진 ${i + 1}`;
           photos.push({ label, path });
           
@@ -412,25 +395,6 @@ exports.deleteInspection = async (req, res) => {
     const inspection = await Inspection.findByIdAndDelete(id);
     if (!inspection) return res.status(404).json({ error: 'Inspection not found' });
     res.json({ message: 'Inspection deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Helper function to get current quarter
-function getCurrentQuarter() {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = date.getMonth(); 
-  const quarter = Math.floor(month / 3) + 1;
-  return `${year}-Q${quarter}`;
-}
-
-// 10. Get Categories
-exports.getCategories = async (req, res) => {
-  try {
-    const categories = await Category.find({});
-    res.json(categories);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
