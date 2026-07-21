@@ -59,8 +59,10 @@ pipeline {
                 script {
                     echo 'Creating docker network and linking MongoDB...'
                     sh 'docker network create safety-net || true'
-                    // mongo라는 별칭(alias)을 붙여주어야 backend에서 mongodb://mongo:27017 로 접근 가능합니다.
-                    sh 'docker network connect --alias mongo safety-net mongodb-mongo-1 || true'
+                    
+                    // 기존 연결 해제 후 별칭(alias) 지정하여 재연결
+                    sh 'docker network disconnect safety-net mongodb-mongo-1 || true'
+                    sh 'docker network connect --alias mongo safety-net mongodb-mongo-1'
 
                     echo 'Building backend image...'
                     sh 'docker build -t safety-backend:latest ./backend'
@@ -71,24 +73,24 @@ pipeline {
                     echo 'Deploying backend container...'
                     sh '''
                         docker run -d --name backend \
-                          --network safety-net \
-                          --restart always \
-                          --security-opt apparmor=unconfined \
-                          -p 5050:5000 \
-                          -e PORT=5000 \
-                          -e MONGO_URI=mongodb://mongo:27017/safety_facilities \
-                          -v /data/uploads:/app/uploads \
-                          safety-backend:latest
+                        --network safety-net \
+                        --restart always \
+                        --security-opt apparmor=unconfined \
+                        -p 5050:5000 \
+                        -e PORT=5000 \
+                        -e MONGO_URI=mongodb://mongo:27017/safety_facilities \
+                        -v /data/uploads:/app/uploads \
+                        safety-backend:latest
                     '''
 
                     echo 'Deploying frontend container...'
                     sh '''
                         docker run -d --name frontend \
-                          --network safety-net \
-                          --restart always \
-                          --security-opt apparmor=unconfined \
-                          -p 8090:80 \
-                          safety-frontend:latest
+                        --network safety-net \
+                        --restart always \
+                        --security-opt apparmor=unconfined \
+                        -p 8090:80 \
+                        safety-frontend:latest
                     '''
 
                     echo 'Cleaning up env files...'
