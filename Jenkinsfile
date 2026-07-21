@@ -12,6 +12,18 @@ pipeline {
             }
         }
         
+        stage('Prepare Directories') {
+            steps {
+                script {
+                    echo 'Preparing directories and setting permissions...'
+                    sh 'mkdir -p backend frontend'
+                    sh 'chmod 755 backend frontend || true'
+                    // Reset permissions of existing .env files if they exist to prevent overwrite issues
+                    sh 'chmod 666 backend/.env frontend/.env .env || true'
+                }
+            }
+        }
+
         stage('Inject Environment Variables') {
             steps {
                 script {
