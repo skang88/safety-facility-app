@@ -50,10 +50,8 @@ pipeline {
             steps {
                 script {
                     echo 'Stopping and removing existing containers...'
-                    sh 'docker stop frontend || true'
-                    sh 'docker rm frontend || true'
-                    sh 'docker stop backend || true'
-                    sh 'docker rm backend || true'
+                    sh 'docker rm -f frontend || true'
+                    sh 'docker rm -f backend || true'
                 }
             }
         }
@@ -74,6 +72,7 @@ pipeline {
                     sh '''
                         docker run -d --name backend \
                           --network safety-net \
+                          --security-opt apparmor=unconfined \
                           -p 5050:5000 \
                           -e PORT=5000 \
                           -e MONGO_URI=mongodb://mongo:27017/safety_facilities \
@@ -85,6 +84,7 @@ pipeline {
                     sh '''
                         docker run -d --name frontend \
                           --network safety-net \
+                          --security-opt apparmor=unconfined \
                           -p 8090:80 \
                           safety-frontend:latest
                     '''
