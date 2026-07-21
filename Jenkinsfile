@@ -18,7 +18,6 @@ pipeline {
                     echo 'Preparing directories and setting permissions...'
                     sh 'mkdir -p backend frontend'
                     sh 'chmod 755 backend frontend || true'
-                    // Reset permissions of existing .env files if they exist to prevent overwrite issues
                     sh 'chmod 666 backend/.env frontend/.env || true'
                 }
             }
@@ -27,82 +26,39 @@ pipeline {
         stage('Inject Environment Variables') {
             steps {
                 script {
-                    // Inject environment variables from Jenkins Credentials
+                    // Jenkins Credentials에서 .env 파일 주입 (기존 방식 유지)
                     withCredentials([
                         file(credentialsId: 'backend-env', variable: 'BACKEND_ENV'),
                         file(credentialsId: 'frontend-env', variable: 'FRONTEND_ENV')
                     ]) {
-                        // Copy backend environment variables
                         sh 'cp "$BACKEND_ENV" backend/.env'
-                        
-                        // Copy frontend environment variables
                         sh 'cp "$FRONTEND_ENV" frontend/.env'
-                        
                         echo 'Environment variables injected successfully.'
                     }
                 }
             }
         }
 
-        stage('Clean Up Existing Containers') {
+        stage('Clean Up Existing Services') {
             steps {
                 script {
-                    echo 'Stopping and removing existing containers...'
-                    sh 'docker rm -f frontend || true'
-                    sh 'docker rm -f backend || true'
+                    echo 'Stopping old containers if running...'
+                    // 기존 개별 docker run으로 떠 있던 컨테이너 충돌 방지 및 컴포즈 내리기
+                    sh 'docker rm -f backend frontend mongo mongo-express || true'
+                    sh 'docker compose down || true'
                 }
             }
         }
         
-        stage('Build & Deploy Containers') {
+        stage('Build & Deploy Services') {
             steps {
                 script {
-                    echo 'Creating docker network and linking MongoDB...'
-                    sh 'docker network create safety-net || true'
-                    
-                    // 기존 연결 해제 후 별칭(alias) 지정하여 재연결
-                    sh 'docker network disconnect safety-net mongodb-mongo-1 || true'
-                    sh 'docker network connect --alias mongo safety-net mongodb-mongo-1'
+                    echo 'Building images and deploying all services with Docker Compose...'
+                    // --build 옵션으로 최신 코드를 반영하여 이미지를 빌드하고 백그라운드로 실행
+                    sh 'docker compose up -d --build'
 
-                    echo 'Building backend image...'
-                    sh 'docker build -t safety-backend:latest ./backend'
-
-                    echo 'Building frontend image...'
-                    sh 'docker build -t safety-frontend:latest ./frontend'
-
-                    echo 'Deploying backend container...'
-                    sh '''
-                        docker run -d --name backend \
-                        --network safety-net \
-                        --restart always \
-                        --security-opt apparmor=unconfined \
-                        -p 5050:5000 \
-                        -e PORT=5000 \
-                        -e MONGO_URI=mongodb://mongo:27017/safety_facilities \
-                        -v /data/uploads:/app/uploads \
-                        safety-backend:latest
-                    '''
-
-                    echo 'Deploying frontend container...'
-                    sh '''
-                        docker run -d --name frontend \
-                        --network safety-net \
-                        --restart always \
-                        --security-opt apparmor=unconfined \
-                        -p 8090:80 \
-                        safety-frontend:latest
-                    '''
-
-                    echo 'Cleaning up env files...'
+                    echo 'Cleaning up injected env files...'
                     sh 'rm -f backend/.env frontend/.env'
-                }
-            }
-        }
-        
-        stage('Initialize Data (Optional)') {
-            steps {
-                script {
-                    echo 'Skipping automatic data initialization. Run "docker exec -it backend npm run import-data" manually if needed.'
                 }
             }
         }
