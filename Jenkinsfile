@@ -18,7 +18,7 @@ pipeline {
                     // Inject environment variables from Jenkins Credentials
                     withCredentials([
                         file(credentialsId: 'backend-env', variable: 'BACKEND_ENV'),
-                        file(credentialsId: 'front-env', variable: 'FRONTEND_ENV')
+                        file(credentialsId: 'frontend-env', variable: 'FRONTEND_ENV')
                     ]) {
                         // Copy backend environment variables
                         sh 'cp "$BACKEND_ENV" backend/.env'
