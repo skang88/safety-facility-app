@@ -1,10 +1,4 @@
 services:
-  mongo:
-    image: mongo:6.0
-    ports:
-      - "${MONGO_EXTERNAL_PORT:-27017}:27017"
-    volumes:
-      - mongo-data:/data/db
 
   backend:
     build: 
@@ -13,7 +7,7 @@ services:
     ports:
       - "${BACKEND_EXTERNAL_PORT:-5050}:${BACKEND_PORT:-5000}"
     volumes:
-      - backend-uploads:/app/uploads
+      - /data/uploads:/app/uploads
     environment:
       - PORT=${BACKEND_PORT:-5000}
       - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017/safety_facilities}
@@ -28,7 +22,3 @@ services:
       - "${FRONTEND_EXTERNAL_PORT:-8090}:${FRONTEND_PORT:-80}"
     depends_on:
       - backend
-
-volumes:
-  mongo-data:
-  backend-uploads:
