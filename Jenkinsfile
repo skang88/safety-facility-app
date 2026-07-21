@@ -34,13 +34,11 @@ pipeline {
                     ]) {
                         // Copy backend environment variables
                         sh 'cp "$BACKEND_ENV" backend/.env'
-                        echo '--- Checking backend/.env ---'
-                        sh 'cat backend/.env'
                         
                         // Copy frontend environment variables
                         sh 'cp "$FRONTEND_ENV" frontend/.env'
-                        echo '--- Checking frontend/.env ---'
-                        sh 'cat frontend/.env'
+                        
+                        echo 'Environment variables injected successfully.'
                     }
                 }
             }
@@ -59,9 +57,10 @@ pipeline {
         stage('Build & Deploy Containers') {
             steps {
                 script {
-                    echo 'Creating docker network...'
+                    echo 'Creating docker network and linking MongoDB...'
                     sh 'docker network create safety-net || true'
-                    sh 'docker network connect safety-net mongodb-mongo-1 || true'
+                    // mongo라는 별칭(alias)을 붙여주어야 backend에서 mongodb://mongo:27017 로 접근 가능합니다.
+                    sh 'docker network connect --alias mongo safety-net mongodb-mongo-1 || true'
 
                     echo 'Building backend image...'
                     sh 'docker build -t safety-backend:latest ./backend'
@@ -73,6 +72,7 @@ pipeline {
                     sh '''
                         docker run -d --name backend \
                           --network safety-net \
+                          --restart always \
                           --security-opt apparmor=unconfined \
                           -p 5050:5000 \
                           -e PORT=5000 \
@@ -85,6 +85,7 @@ pipeline {
                     sh '''
                         docker run -d --name frontend \
                           --network safety-net \
+                          --restart always \
                           --security-opt apparmor=unconfined \
                           -p 8090:80 \
                           safety-frontend:latest
