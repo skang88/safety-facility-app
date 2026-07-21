@@ -12,6 +12,27 @@ pipeline {
             }
         }
         
+        stage('Inject Environment Variables') {
+            steps {
+                script {
+                    // Inject environment variables from Jenkins Credentials
+                    withCredentials([
+                        file(credentialsId: 'backend-env', variable: 'BACKEND_ENV'),
+                        file(credentialsId: 'front-env', variable: 'FRONTEND_ENV')
+                    ]) {
+                        // Copy backend environment variables
+                        sh 'cp "$BACKEND_ENV" backend/.env'
+                        
+                        // Copy frontend environment variables
+                        sh 'cp "$FRONTEND_ENV" frontend/.env'
+                        
+                        // Prepare global .env from example template for Docker Compose configuration
+                        sh 'cp .env.example .env'
+                    }
+                }
+            }
+        }
+        
         stage('Build & Deploy Containers') {
             steps {
                 script {
