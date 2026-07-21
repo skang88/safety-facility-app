@@ -49,7 +49,7 @@ pipeline {
             steps {
                 script {
                     echo 'Stopping and removing existing containers...'
-                    sh 'docker compose down --remove-orphans'
+                    sh 'docker compose down --remove-orphans || true'
                 }
             }
         }
