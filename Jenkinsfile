@@ -45,7 +45,11 @@ pipeline {
                     echo 'Stopping old containers...'
                     // 기존에 떠 있던 개별 컨테이너 삭제
                     sh 'docker rm -f backend frontend mongo mongo-express || true'
-                    sh 'docker compose down || true'
+                    sh 'docker compose down --remove-orphans || true'
+
+                    // 2. 포트 점유 잔재 정리 (선택)
+                    sh 'sudo fuser -k 8081/tcp || true'
+                    sh 'sudo fuser -k 27017/tcp || true'
                 }
             }
         }
