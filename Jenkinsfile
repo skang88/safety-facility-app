@@ -61,6 +61,7 @@ pipeline {
                 script {
                     echo 'Creating docker network...'
                     sh 'docker network create safety-net || true'
+                    sh 'docker network connect safety-net mongodb-mongo-1 || true'
 
                     echo 'Building backend image...'
                     sh 'docker build -t safety-backend:latest ./backend'
@@ -75,7 +76,7 @@ pipeline {
                           --security-opt apparmor=unconfined \
                           -p 5050:5000 \
                           -e PORT=5000 \
-                          -e MONGO_URI=mongodb://mongo:27017/safety_facilities \
+                          -e MONGO_URI=mongodb://mongodb-mongo-1:27017/safety_facilities \
                           -v backend-uploads:/app/uploads \
                           safety-backend:latest
                     '''
