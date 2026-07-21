@@ -26,7 +26,6 @@ pipeline {
         stage('Inject Environment Variables') {
             steps {
                 script {
-                    // Jenkins Credentials에서 .env 파일 주입 (기존 방식 유지)
                     withCredentials([
                         file(credentialsId: 'backend-env', variable: 'BACKEND_ENV'),
                         file(credentialsId: 'frontend-env', variable: 'FRONTEND_ENV')
@@ -42,11 +41,9 @@ pipeline {
         stage('Clean Up Existing Services') {
             steps {
                 script {
-                    echo 'Stopping old containers...'
-                    // 기존에 떠 있던 개별 컨테이너 삭제
-                    sh 'docker rm -f backend frontend mongo || true'
+                    echo 'Stopping old containers and cleaning networks...'
+                    // docker-compose 기준으로 컨테이너, 네트워크 깔끔하게 정돈
                     sh 'docker compose down --remove-orphans || true'
-
                 }
             }
         }
@@ -55,7 +52,6 @@ pipeline {
             steps {
                 script {
                     echo 'Building images and deploying all services with Docker Compose...'
-                    // docker-compose.yml 기반으로 전체 서비스 빌드 및 실행
                     sh 'docker compose up -d --build'
 
                     echo 'Cleaning up injected env files...'
