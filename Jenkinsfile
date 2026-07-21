@@ -42,8 +42,8 @@ pipeline {
         stage('Clean Up Existing Services') {
             steps {
                 script {
-                    echo 'Stopping old containers if running...'
-                    // 기존 개별 docker run으로 떠 있던 컨테이너 충돌 방지 및 컴포즈 내리기
+                    echo 'Stopping old containers...'
+                    // 기존에 떠 있던 개별 컨테이너 삭제
                     sh 'docker rm -f backend frontend mongo mongo-express || true'
                     sh 'docker compose down || true'
                 }
@@ -54,7 +54,7 @@ pipeline {
             steps {
                 script {
                     echo 'Building images and deploying all services with Docker Compose...'
-                    // --build 옵션으로 최신 코드를 반영하여 이미지를 빌드하고 백그라운드로 실행
+                    // docker-compose.yml 기반으로 전체 서비스 빌드 및 실행
                     sh 'docker compose up -d --build'
 
                     echo 'Cleaning up injected env files...'
