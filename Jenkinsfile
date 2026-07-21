@@ -47,6 +47,8 @@ pipeline {
                 script {
                     // Build and start the containers in detached mode
                     sh 'docker compose up -d --build'
+
+                    sh 'rm -f backend/.env frontend/.env .env'
                 }
             }
         }
