@@ -32,6 +32,15 @@ pipeline {
                 }
             }
         }
+
+        stage('Clean Up Existing Containers') {
+            steps {
+                script {
+                    echo 'Stopping and removing existing containers...'
+                    sh 'docker compose down --remove-orphans'
+                }
+            }
+        }
         
         stage('Build & Deploy Containers') {
             steps {
