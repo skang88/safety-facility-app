@@ -19,7 +19,7 @@ pipeline {
                     sh 'mkdir -p backend frontend'
                     sh 'chmod 755 backend frontend || true'
                     // Reset permissions of existing .env files if they exist to prevent overwrite issues
-                    sh 'chmod 666 backend/.env frontend/.env .env || true'
+                    sh 'chmod 666 backend/.env frontend/.env || true'
                 }
             }
         }
@@ -37,9 +37,6 @@ pipeline {
                         
                         // Copy frontend environment variables
                         sh 'cp "$FRONTEND_ENV" frontend/.env'
-                        
-                        // Prepare global .env from example template for Docker Compose configuration
-                        sh 'cp .env.example .env'
                     }
                 }
             }
@@ -49,7 +46,10 @@ pipeline {
             steps {
                 script {
                     echo 'Stopping and removing existing containers...'
-                    sh 'docker compose down --remove-orphans || true'
+                    sh 'docker stop frontend || true'
+                    sh 'docker rm frontend || true'
+                    sh 'docker stop backend || true'
+                    sh 'docker rm backend || true'
                 }
             }
         }
@@ -57,10 +57,36 @@ pipeline {
         stage('Build & Deploy Containers') {
             steps {
                 script {
-                    // Build and start the containers in detached mode
-                    sh 'docker compose up -d --build'
+                    echo 'Creating docker network...'
+                    sh 'docker network create safety-net || true'
 
-                    sh 'rm -f backend/.env frontend/.env .env'
+                    echo 'Building backend image...'
+                    sh 'docker build -t safety-backend:latest ./backend'
+
+                    echo 'Building frontend image...'
+                    sh 'docker build -t safety-frontend:latest ./frontend'
+
+                    echo 'Deploying backend container...'
+                    sh '''
+                        docker run -d --name backend \
+                          --network safety-net \
+                          -p 5050:5000 \
+                          -e PORT=5000 \
+                          -e MONGO_URI=mongodb://mongo:27017/safety_facilities \
+                          -v backend-uploads:/app/uploads \
+                          safety-backend:latest
+                    '''
+
+                    echo 'Deploying frontend container...'
+                    sh '''
+                        docker run -d --name frontend \
+                          --network safety-net \
+                          -p 8090:80 \
+                          safety-frontend:latest
+                    '''
+
+                    echo 'Cleaning up env files...'
+                    sh 'rm -f backend/.env frontend/.env'
                 }
             }
         }
@@ -68,9 +94,7 @@ pipeline {
         stage('Initialize Data (Optional)') {
             steps {
                 script {
-                    // This can be run manually if needed, or uncommented for first run
-                    // sh 'docker-compose exec -T backend npm run import-data'
-                    echo 'Skipping automatic data initialization. Run "docker-compose exec backend npm run import-data" manually if needed.'
+                    echo 'Skipping automatic data initialization. Run "docker exec -it backend npm run import-data" manually if needed.'
                 }
             }
         }
