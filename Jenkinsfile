@@ -34,9 +34,13 @@ pipeline {
                     ]) {
                         // Copy backend environment variables
                         sh 'cp "$BACKEND_ENV" backend/.env'
+                        echo '--- Checking backend/.env ---'
+                        sh 'cat backend/.env'
                         
                         // Copy frontend environment variables
                         sh 'cp "$FRONTEND_ENV" frontend/.env'
+                        echo '--- Checking frontend/.env ---'
+                        sh 'cat frontend/.env'
                     }
                 }
             }
