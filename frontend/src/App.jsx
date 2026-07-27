@@ -1,14 +1,63 @@
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ListChecks, Flame, Map } from 'lucide-react';
+import { Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, ListChecks, Flame, Map, LogOut } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import ListView from './pages/ListView';
 import FireWaterListView from './pages/FireWaterListView';
 import FireWaterMapView from './pages/FireWaterMapView';
 import ReportView from './pages/ReportView';
 import FireWaterReportView from './pages/FireWaterReportView';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const token = localStorage.getItem('token');
+  const userJson = localStorage.getItem('user');
+  const user = userJson ? JSON.parse(userJson) : null;
+
+  const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
+  const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
+
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
+
+  // If user is not authenticated and trying to access a private page, redirect to login
+  if (!token && !isPublicPath) {
+    return (
+      <Routes>
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
+  // If user is authenticated and trying to access public auth pages, redirect to dashboard
+  if (token && isPublicPath) {
+    return (
+      <Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
+
+  // Under public path context (when NOT authenticated)
+  if (isPublicPath) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+      </Routes>
+    );
+  }
 
   if (location.pathname === '/report' || location.pathname === '/fire-water-report') {
     return (
@@ -65,6 +114,28 @@ function App() {
                 <Map className="w-4 h-4 mr-1 shrink-0" />
                 소방용수 지도
               </Link>
+
+              {/* User Profile & Log Out */}
+              {user && (
+                <div className="flex items-center space-x-2 border-l border-red-600/50 pl-2 sm:pl-4">
+                  <div className="hidden md:flex flex-col text-right">
+                    <span className="text-xs font-semibold text-white">
+                      {user.name || user.employeeId || user.email.split('@')[0]}
+                    </span>
+                    <span className="text-[10px] text-red-200">
+                      {user.role === 'admin' ? '관리자' : '점검 요원'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center justify-center p-2 rounded-md text-red-100 hover:bg-red-600 hover:text-white transition"
+                    title="로그아웃"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden sm:inline-block text-xs font-medium ml-1">로그아웃</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
