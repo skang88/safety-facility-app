@@ -232,11 +232,24 @@ exports.register = async (req, res) => {
 
 // 로그인
 exports.login = async (req, res) => {
-  let { email, password } = req.body;
-  email = email.toLowerCase(); // Convert email to lowercase
+  let { email, username, password } = req.body;
+  const loginId = (username || email || '').toLowerCase().trim();
 
   try {
-    const user = await User.findOne({ email });
+    const allowedDomain = process.env.ALLOWED_EMAIL_DOMAIN || '@korea.kr';
+    const searchConditions = [
+      { email: loginId },
+      { employeeId: loginId.toUpperCase() }
+    ];
+
+    if (!loginId.includes('@')) {
+      const fullEmail = `${loginId}${allowedDomain}`;
+      searchConditions.push({ email: fullEmail });
+    }
+
+    const user = await User.findOne({
+      $or: searchConditions
+    });
     
     // For security, check user existence and password match first with a generic message.
     if (!user) {

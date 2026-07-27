@@ -140,7 +140,7 @@ function Login() {
   const handlePasswordLogin = async (e) => {
     e.preventDefault();
     if (!email || !password) {
-      setError('이메일과 비밀번호를 모두 입력해 주세요.');
+      setError('아이디와 비밀번호를 모두 입력해 주세요.');
       return;
     }
 
@@ -341,18 +341,18 @@ function Login() {
             <form onSubmit={handlePasswordLogin} className="space-y-6">
               <div>
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  이메일 주소
+                  아이디 또는 이메일
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
                     <Mail className="w-5 h-5" />
                   </div>
                   <input
-                    type="email"
+                    type="text"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="example@korea.kr"
+                    placeholder="아이디 또는 이메일 입력"
                     className="block w-full pl-11 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition duration-200"
                   />
                 </div>
