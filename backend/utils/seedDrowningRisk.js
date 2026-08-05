@@ -18,7 +18,7 @@ async function seedDrowningRiskData() {
 
     console.log('[DrowningRisk] Reading Gyeongnam accident data from CSV...');
     const content = fs.readFileSync(csvPath, 'utf8');
-    const lines = content.split('\n');
+    const lines = content.split(/\r?\n/);
 
     const records = [];
 
