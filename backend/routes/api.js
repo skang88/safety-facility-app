@@ -6,6 +6,7 @@ const categoryController = require('../controllers/categoryController');
 const facilityController = require('../controllers/facilityController');
 const fireWaterController = require('../controllers/fireWaterController');
 const vehicleController = require('../controllers/vehicleController');
+const drowningRiskController = require('../controllers/drowningRiskController');
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
 const { protect } = require('../middlewares/authMiddleware');
@@ -20,6 +21,9 @@ router.use('/users', protect, userRoutes);
 
 // Protected Routes
 router.use(protect);
+
+// Drowning Accident Risk Layer Route
+router.get('/drowning-risks', drowningRiskController.getDrowningRisks);
 
 // Category Routes
 router.get('/categories', categoryController.getCategories);
