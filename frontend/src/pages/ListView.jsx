@@ -8,12 +8,15 @@ import {
   LifeBuoy, 
   Briefcase, 
   MapPin, 
-  Shield 
+  Shield,
+  LayoutGrid,
+  Map as MapIcon
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import InspectionModal from '../components/InspectionModal';
 import InspectionDetailModal from '../components/InspectionDetailModal';
 import FacilityEditModal from '../components/FacilityEditModal';
+import MapView from './MapView';
 
 export default function ListView() {
   const [categories, setCategories] = useState([]);
@@ -26,6 +29,9 @@ export default function ListView() {
   const [editingFacility, setEditingFacility] = useState(null);
   const [loading, setLoading] = useState(true);
   
+  // View mode toggle: 'list' or 'map'
+  const [viewMode, setViewMode] = useState('list');
+
   // Filters
   const [regionFilter, setRegionFilter] = useState('전체');
   const [statusFilter, setStatusFilter] = useState('전체');
@@ -136,10 +142,10 @@ export default function ListView() {
   });
 
   return (
-    <div className="h-full w-full bg-gray-50 flex flex-col">
+    <div className="h-full w-full bg-gray-50 flex flex-col overflow-hidden">
       {/* Category Switching Tabs */}
       {categories.length > 0 && (
-        <div className="bg-white px-4 pt-4 border-b flex space-x-1 shrink-0">
+        <div className="bg-white px-4 pt-3 border-b flex space-x-1 shrink-0 overflow-x-auto">
           {categories.map(cat => {
             const isActive = cat._id === activeCategoryId;
             return (
@@ -151,7 +157,7 @@ export default function ListView() {
                   setStatusFilter('전체');
                   setSearchQuery('');
                 }}
-                className={`flex items-center px-4 py-2.5 font-bold text-sm transition-all rounded-t-lg border-b-2 -mb-[2px]
+                className={`flex items-center px-4 py-2 font-bold text-xs sm:text-sm transition-all rounded-t-lg border-b-2 -mb-[2px] whitespace-nowrap
                   ${isActive 
                     ? 'border-red-600 text-red-600 font-extrabold bg-red-50/30' 
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
@@ -166,36 +172,60 @@ export default function ListView() {
         </div>
       )}
 
-      {/* Filters Area */}
-      <div className="bg-white p-4 shadow-sm z-10 border-b flex flex-col space-y-3">
-        <div className="flex justify-between items-center">
-          <h2 className="font-bold text-gray-800">
-            {activeCategory?.name || '시설물'} 리스트 ({filtered.length}개소)
+      {/* Filters & View Toggle Area */}
+      <div className="bg-white p-4 shadow-sm z-10 border-b flex flex-col space-y-3 shrink-0">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+          <h2 className="font-bold text-gray-800 text-sm sm:text-base">
+            {activeCategory?.name || '시설물'} 관리 ({filtered.length}개소)
           </h2>
-          <Link 
-            to="/report" 
-            className="flex items-center px-3 py-1.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-sm text-xs transition-colors"
-          >
-            <Printer className="w-3.5 h-3.5 mr-1.5" />
-            보고서 출력
-          </Link>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* View Mode Segmented Toggle */}
+            <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+                  viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" /> 리스트
+              </button>
+              <button
+                onClick={() => setViewMode('map')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+                  viewMode === 'map' ? 'bg-white text-red-600 shadow-sm font-extrabold' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <MapIcon className="w-3.5 h-3.5" /> 지도 보기
+              </button>
+            </div>
+
+            <Link 
+              to="/report" 
+              className="flex items-center px-3 py-1.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-sm text-xs transition-colors whitespace-nowrap"
+            >
+              <Printer className="w-3.5 h-3.5 mr-1.5" />
+              보고서 출력
+            </Link>
+          </div>
         </div>
+
         <div className="max-w-7xl w-full flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input 
               type="text" 
               placeholder="시설물 이름 검색..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm"
+              className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-xs sm:text-sm"
             />
           </div>
           <div className="flex gap-2">
             <select 
               value={regionFilter} 
               onChange={(e) => setRegionFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 outline-none focus:ring-2 focus:ring-red-500 text-sm flex-1 sm:flex-none"
+              className="border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 outline-none focus:ring-2 focus:ring-red-500 text-xs sm:text-sm flex-1 sm:flex-none font-medium"
             >
               <option value="전체">센터 전체</option>
               <option value="의령">의령</option>
@@ -205,7 +235,7 @@ export default function ListView() {
             <select 
               value={statusFilter} 
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 outline-none focus:ring-2 focus:ring-red-500 text-sm flex-1 sm:flex-none"
+              className="border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 outline-none focus:ring-2 focus:ring-red-500 text-xs sm:text-sm flex-1 sm:flex-none font-medium"
             >
               <option value="전체">상태 전체</option>
               <option value="미점검">미점검</option>
@@ -215,10 +245,17 @@ export default function ListView() {
         </div>
       </div>
 
-      {/* List Area */}
+      {/* Main Content: List or Map */}
       <div className="flex-1 overflow-y-auto p-4">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">데이터를 불러오는 중입니다...</div>
+          <div className="p-8 text-center text-gray-500 font-medium">데이터를 불러오는 중입니다...</div>
+        ) : viewMode === 'map' ? (
+          <div className="h-full w-full min-h-[500px] max-w-7xl mx-auto">
+            <MapView 
+              facilities={filtered} 
+              onRefresh={() => activeCategoryId && fetchFacilities(activeCategoryId)} 
+            />
+          </div>
         ) : (
           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.map(fac => {
@@ -227,7 +264,7 @@ export default function ListView() {
               const address = match ? match[2] : null;
 
               return (
-                <div key={fac._id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col hover:shadow-md transition-shadow">
+                <div key={fac._id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col hover:shadow-md transition-shadow text-left">
                   <div className="flex justify-between items-start mb-3">
                     <div className="pr-2 flex-1 min-w-0">
                       <h3 className="font-bold text-base sm:text-lg text-gray-800 break-keep truncate" title={displayName}>{displayName}</h3>

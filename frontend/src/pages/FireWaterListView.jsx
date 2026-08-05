@@ -1,10 +1,22 @@
 import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
-import { Search, CheckCircle, AlertCircle, Printer, FileSpreadsheet, Plus, Upload, Download } from 'lucide-react';
+import { 
+  Search, 
+  CheckCircle, 
+  AlertCircle, 
+  Printer, 
+  FileSpreadsheet, 
+  Plus, 
+  Upload, 
+  Download,
+  LayoutGrid,
+  Map as MapIcon 
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import FireWaterInspectionModal from '../components/FireWaterInspectionModal';
 import FireWaterInspectionDetailModal from '../components/FireWaterInspectionDetailModal';
 import FireWaterEditModal from '../components/FireWaterEditModal';
+import FireWaterMapView from './FireWaterMapView';
 
 export default function FireWaterListView() {
   const [fireWaters, setFireWaters] = useState([]);
@@ -15,6 +27,9 @@ export default function FireWaterListView() {
   const [editingFireWater, setEditingFireWater] = useState(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   
+  // View mode toggle: 'list' or 'map'
+  const [viewMode, setViewMode] = useState('list');
+
   // Filters
   const [regionFilter, setRegionFilter] = useState('전체');
   const [typeFilter, setTypeFilter] = useState('전체');
@@ -120,23 +135,43 @@ export default function FireWaterListView() {
   const fireWaterTypes = ['지상소화전', '지하소화전', '급수탑', '저수조', '비상소화장치'];
 
   return (
-    <div className="h-full w-full bg-gray-50 flex flex-col">
+    <div className="h-full w-full bg-gray-50 flex flex-col overflow-hidden">
       {/* Top Banner and Excel Tools */}
-      <div className="bg-white p-4 shadow-sm z-10 border-b flex flex-col space-y-4">
+      <div className="bg-white p-4 shadow-sm z-10 border-b flex flex-col space-y-4 shrink-0">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-          <div>
-            <h2 className="font-bold text-gray-800 text-lg text-left">소방용수 관리 ({filtered.length}개소)</h2>
-            <p className="text-xs text-gray-500 text-left">소방용수 대상물 리스트 관리 및 분기 조사를 기록합니다.</p>
+          <div className="text-left">
+            <h2 className="font-bold text-gray-800 text-base sm:text-lg">소방용수 관리 ({filtered.length}개소)</h2>
+            <p className="text-xs text-gray-500">소방용수 대상물 리스트 관리 및 분기 조사를 기록합니다.</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {/* View Mode Segmented Toggle */}
+            <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+                  viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" /> 리스트
+              </button>
+              <button
+                onClick={() => setViewMode('map')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+                  viewMode === 'map' ? 'bg-white text-red-600 shadow-sm font-extrabold' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <MapIcon className="w-3.5 h-3.5" /> 지도 보기
+              </button>
+            </div>
+
             {/* Excel Upload */}
             <button
               onClick={() => excelInputRef.current.click()}
-              className="flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-xs transition shadow-sm"
+              className="flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-xs transition shadow-sm whitespace-nowrap"
               title="소방용수 엑셀 리스트를 업로드하여 대상물을 등록/수정합니다."
             >
               <Upload className="w-3.5 h-3.5 mr-1" />
-              대상물 업로드
+              업로드
             </button>
             <input
               type="file"
@@ -151,34 +186,34 @@ export default function FireWaterListView() {
               href="/api/fire-waters/export-excel"
               target="_blank"
               download
-              className="flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs transition shadow-sm"
+              className="flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs transition shadow-sm whitespace-nowrap"
             >
               <Download className="w-3.5 h-3.5 mr-1" />
-              대상물 다운로드
+              목록 다운로드
             </a>
 
             <a
               href="/api/fire-waters/export-results-excel"
               target="_blank"
               download
-              className="flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs transition shadow-sm"
+              className="flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs transition shadow-sm whitespace-nowrap"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 mr-1" />
-              점검결과 다운로드
+              결과 다운로드
             </a>
 
             {/* Print and Add */}
             <Link 
               to="/fire-water-report" 
-              className="flex items-center px-3 py-1.5 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 shadow-sm text-xs transition"
+              className="flex items-center px-3 py-1.5 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 shadow-sm text-xs transition whitespace-nowrap"
             >
               <Printer className="w-3.5 h-3.5 mr-1.5" />
-              보고서 출력
+              관리카드 인쇄
             </Link>
 
             <button
               onClick={() => setIsAddingNew(true)}
-              className="flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-xs transition shadow-sm"
+              className="flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-xs transition shadow-sm whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5 mr-1" />
               신규 등록
@@ -195,7 +230,7 @@ export default function FireWaterListView() {
               placeholder="용수명 또는 주소 검색..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm"
+              className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-xs sm:text-sm"
             />
           </div>
           <div className="flex flex-wrap gap-2">
@@ -232,116 +267,125 @@ export default function FireWaterListView() {
         </div>
       </div>
 
-      {/* Grid List View */}
+      {/* Main Content: List or Map View */}
       <div className="flex-1 overflow-y-auto p-4">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map(fw => {
-            const hasSerial = !!fw.serialNumber;
-            const lat = fw.location.coordinates[1];
-            const lon = fw.location.coordinates[0];
+        {viewMode === 'map' ? (
+          <div className="h-full w-full min-h-[500px] max-w-7xl mx-auto">
+            <FireWaterMapView 
+              fireWaters={filtered} 
+              onRefresh={fetchFireWaters} 
+            />
+          </div>
+        ) : (
+          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filtered.map(fw => {
+              const hasSerial = !!fw.serialNumber;
+              const lat = fw.location?.coordinates?.[1] || 0;
+              const lon = fw.location?.coordinates?.[0] || 0;
 
-            return (
-              <div key={fw._id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col hover:shadow-md transition text-left">
-                <div className="flex justify-between items-start mb-3 gap-2">
-                  <div className="pr-1 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                      <span className="bg-red-50 text-red-700 border border-red-200 text-[10px] px-1.5 py-0.5 rounded font-bold">
-                        {fw.type}
-                      </span>
-                      {hasSerial && (
-                        <span className="bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-medium">
-                          {fw.serialNumber}
+              return (
+                <div key={fw._id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col hover:shadow-md transition text-left">
+                  <div className="flex justify-between items-start mb-3 gap-2">
+                    <div className="pr-1 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                        <span className="bg-red-50 text-red-700 border border-red-200 text-[10px] px-1.5 py-0.5 rounded font-bold">
+                          {fw.type}
                         </span>
-                      )}
+                        {hasSerial && (
+                          <span className="bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-medium">
+                            {fw.serialNumber}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-bold text-base text-gray-800 break-all">{fw.name}</h3>
+                      <p className="text-xs text-gray-500 mt-1 leading-normal break-keep">{fw.address}</p>
+                      <div className="flex items-center gap-1.5 mt-1.5 text-gray-400">
+                        <p className="text-[10px] font-mono">
+                          ({lat.toFixed(5)}, {lon.toFixed(5)})
+                        </p>
+                        <button
+                          onClick={() => setEditingFireWater(fw)}
+                          className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline font-bold flex items-center shrink-0 transition-colors"
+                        >
+                          수정
+                        </button>
+                      </div>
                     </div>
-                    <h3 className="font-bold text-base text-gray-800 break-all">{fw.name}</h3>
-                    <p className="text-xs text-gray-500 mt-1 leading-normal break-keep">{fw.address}</p>
-                    <div className="flex items-center gap-1.5 mt-1.5 text-gray-400">
-                      <p className="text-[10px] font-mono">
-                        ({lat.toFixed(5)}, {lon.toFixed(5)})
-                      </p>
-                      <button
-                        onClick={() => setEditingFireWater(fw)}
-                        className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline font-bold flex items-center shrink-0 transition-colors"
-                      >
-                        수정
-                      </button>
-                    </div>
+                    
+                    {fw.isInspected ? (
+                      <span className="flex items-center text-green-700 bg-green-100 px-2 py-1 rounded text-[10px] sm:text-[11px] font-bold whitespace-nowrap shrink-0 shadow-sm border border-green-200">
+                        <CheckCircle className="w-3.5 h-3.5 mr-1" /> 조사완료
+                      </span>
+                    ) : (
+                      <span className="flex items-center text-red-700 bg-red-100 px-2 py-1 rounded text-[10px] sm:text-[11px] font-bold whitespace-nowrap shrink-0 shadow-sm border border-red-200">
+                        <AlertCircle className="w-3.5 h-3.5 mr-1" /> 미조사
+                      </span>
+                    )}
                   </div>
-                  
-                  {fw.isInspected ? (
-                    <span className="flex items-center text-green-700 bg-green-100 px-2 py-1 rounded text-[10px] sm:text-[11px] font-bold whitespace-nowrap shrink-0 shadow-sm border border-green-200">
-                      <CheckCircle className="w-3.5 h-3.5 mr-1" /> 조사완료
-                    </span>
-                  ) : (
-                    <span className="flex items-center text-red-700 bg-red-100 px-2 py-1 rounded text-[10px] sm:text-[11px] font-bold whitespace-nowrap shrink-0 shadow-sm border border-red-200">
-                      <AlertCircle className="w-3.5 h-3.5 mr-1" /> 미조사
-                    </span>
-                  )}
-                </div>
 
-                <div className="mb-4 space-y-1.5 bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs text-gray-700">
-                  <p>• 센터: <span className="font-bold">{fw.region}119안전센터</span></p>
-                  <p>• 구경: <span className="font-bold">{fw.diameter ? fw.diameter + ' mm' : '미기재'}</span></p>
-                  <p>• 설치일자: <span className="font-bold">{fw.installDate || '미기재'}</span></p>
-                  {fw.details && <p className="text-[11px] text-gray-500 line-clamp-1 italic">• {fw.details}</p>}
-                </div>
+                  <div className="mb-4 space-y-1.5 bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs text-gray-700">
+                    <p>• 센터: <span className="font-bold">{fw.region}119안전센터</span></p>
+                    <p>• 구경: <span className="font-bold">{fw.diameter ? fw.diameter + ' mm' : '미기재'}</span></p>
+                    <p>• 설치일자: <span className="font-bold">{fw.installDate || '미기재'}</span></p>
+                    {fw.details && <p className="text-[11px] text-gray-500 line-clamp-1 italic">• {fw.details}</p>}
+                  </div>
 
-                {/* Actions */}
-                <div className="mt-auto pt-4 border-t border-gray-100 flex gap-1.5">
-                  <a
-                    href={`https://map.kakao.com/link/map/${encodeURIComponent(fw.name)},${lat},${lon}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 py-2 rounded-lg font-bold text-xs transition text-center bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 flex items-center justify-center whitespace-nowrap"
-                  >
-                    📍 위치
-                  </a>
-                  {fw.isInspected ? (
-                    <>
-                      <button
-                        onClick={() => handleViewResults(fw.latestInspection)}
-                        className="flex-1 py-2 rounded-lg font-bold text-xs transition shadow-sm bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 whitespace-nowrap"
-                      >
-                        👁 결과보기
-                      </button>
-                      <button
-                        onClick={() => handleEditInspection(fw.latestInspection)}
-                        className="flex-1 py-2 rounded-lg font-bold text-xs transition shadow-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 whitespace-nowrap"
-                      >
-                        ✏️ 수정
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      {fw.latestInspection && (
+                  {/* Actions */}
+                  <div className="mt-auto pt-4 border-t border-gray-100 flex gap-1.5">
+                    <a
+                      href={`https://map.kakao.com/link/map/${encodeURIComponent(fw.name)},${lat},${lon}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-2 rounded-lg font-bold text-xs transition text-center bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 flex items-center justify-center whitespace-nowrap"
+                    >
+                      📍 위치
+                    </a>
+                    {fw.isInspected ? (
+                      <>
                         <button
                           onClick={() => handleViewResults(fw.latestInspection)}
-                          className="flex-1 py-2 rounded-lg font-bold text-xs transition shadow-sm bg-gray-50 border border-gray-300 text-gray-700 hover:bg-gray-100 whitespace-nowrap"
+                          className="flex-1 py-2 rounded-lg font-bold text-xs transition shadow-sm bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 whitespace-nowrap"
                         >
-                          ⏱ 이력보기
+                          👁 결과보기
                         </button>
-                      )}
-                      <button
-                        onClick={() => handleOpenInspectionModal(fw)}
-                        className="flex-[2] py-2 rounded-lg font-bold text-xs transition shadow-sm bg-red-600 text-white hover:bg-red-700 whitespace-nowrap"
-                      >
-                        조사 등록
-                      </button>
-                    </>
-                  )}
+                        <button
+                          onClick={() => handleEditInspection(fw.latestInspection)}
+                          className="flex-1 py-2 rounded-lg font-bold text-xs transition shadow-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+                        >
+                          ✏️ 수정
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {fw.latestInspection && (
+                          <button
+                            onClick={() => handleViewResults(fw.latestInspection)}
+                            className="flex-1 py-2 rounded-lg font-bold text-xs transition shadow-sm bg-gray-50 border border-gray-300 text-gray-700 hover:bg-gray-100 whitespace-nowrap"
+                          >
+                            ⏱ 이력보기
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleOpenInspectionModal(fw)}
+                          className="flex-[2] py-2 rounded-lg font-bold text-xs transition shadow-sm bg-red-600 text-white hover:bg-red-700 whitespace-nowrap"
+                        >
+                          조사 등록
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
-          {filtered.length === 0 && (
-            <div className="col-span-full py-16 flex flex-col items-center justify-center text-gray-500">
-              <Search className="w-12 h-12 text-gray-300 mb-4" />
-              <p className="text-lg font-medium">해당하는 소방용수 대상물이 없습니다.</p>
-            </div>
-          )}
-        </div>
+            {filtered.length === 0 && (
+              <div className="col-span-full py-16 flex flex-col items-center justify-center text-gray-500">
+                <Search className="w-12 h-12 text-gray-300 mb-4" />
+                <p className="text-lg font-medium">해당하는 소방용수 대상물이 없습니다.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Modals */}
