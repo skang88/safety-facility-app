@@ -14,6 +14,7 @@ import {
 import Dashboard from './pages/Dashboard';
 import ListView from './pages/ListView';
 import FireWaterListView from './pages/FireWaterListView';
+import FireWaterMapView from './pages/FireWaterMapView';
 import ReportView from './pages/ReportView';
 import FireWaterReportView from './pages/FireWaterReportView';
 import Login from './pages/Login';
@@ -34,8 +35,16 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const token = localStorage.getItem('token');
-  const userJson = localStorage.getItem('user');
-  const user = userJson ? JSON.parse(userJson) : null;
+  
+  // Safely parse user from localStorage to prevent white-screen crashes on corrupt data
+  let user = null;
+  try {
+    const userJson = localStorage.getItem('user');
+    user = userJson && userJson !== 'undefined' ? JSON.parse(userJson) : null;
+  } catch (e) {
+    console.error('Failed to parse user JSON from localStorage:', e);
+    user = null;
+  }
 
   const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
   const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
@@ -74,6 +83,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
   }
@@ -84,6 +94,7 @@ function App() {
       <Routes>
         <Route path="/report" element={<ReportView />} />
         <Route path="/fire-water-report" element={<FireWaterReportView />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
@@ -261,8 +272,9 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/list" element={<ListView />} />
           <Route path="/fire-water" element={<FireWaterListView />} />
-          {/* Backwards compatibility route for fire-water-map */}
           <Route path="/fire-water-map" element={<FireWaterMapView />} />
+          {/* Catch-all route to prevent white screens on invalid/unmatched paths */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>
