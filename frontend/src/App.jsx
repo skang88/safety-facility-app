@@ -4,6 +4,7 @@ import {
   LayoutDashboard, 
   ListChecks, 
   Flame, 
+  Truck,
   LogOut, 
   Menu, 
   X, 
@@ -15,6 +16,7 @@ import Dashboard from './pages/Dashboard';
 import ListView from './pages/ListView';
 import FireWaterListView from './pages/FireWaterListView';
 import FireWaterMapView from './pages/FireWaterMapView';
+import VehicleListView from './pages/VehicleListView';
 import ReportView from './pages/ReportView';
 import FireWaterReportView from './pages/FireWaterReportView';
 import Login from './pages/Login';
@@ -22,11 +24,12 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 
-// Scalable Module Navigation Registry for future expansion
+// Scalable Module Navigation Registry
 const MODULE_ROUTES = [
   { path: '/', label: '통합 대시보드', icon: LayoutDashboard, exact: true },
   { path: '/list', label: '수난안전 시설', icon: ListChecks },
   { path: '/fire-water', label: '소방용수 관리', icon: Flame },
+  { path: '/vehicle', label: '소방차량 관리', icon: Truck },
 ];
 
 function App() {
@@ -273,6 +276,7 @@ function App() {
           <Route path="/list" element={<ListView />} />
           <Route path="/fire-water" element={<FireWaterListView />} />
           <Route path="/fire-water-map" element={<FireWaterMapView />} />
+          <Route path="/vehicle" element={<VehicleListView />} />
           {/* Catch-all route to prevent white screens on invalid/unmatched paths */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

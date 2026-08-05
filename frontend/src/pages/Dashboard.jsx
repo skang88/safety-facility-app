@@ -11,13 +11,16 @@ import {
   Package, 
   User, 
   MapPin, 
-  Phone, 
   Signal, 
   Briefcase,
   FileText, 
   Activity, 
   Droplet,
-  Waves
+  Waves,
+  Truck,
+  Wrench,
+  Navigation,
+  AlertTriangle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import InspectionDetailModal from '../components/InspectionDetailModal';
@@ -26,7 +29,7 @@ import FireWaterInspectionDetailModal from '../components/FireWaterInspectionDet
 import FireWaterInspectionModal from '../components/FireWaterInspectionModal';
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('waterSafety'); // 'waterSafety' or 'fireWater'
+  const [activeTab, setActiveTab] = useState('waterSafety'); // 'waterSafety', 'fireWater', 'vehicle'
   const [categories, setCategories] = useState([]);
   const [activeCategoryId, setActiveCategoryId] = useState('');
   const [summary, setSummary] = useState(null);
@@ -42,19 +45,14 @@ export default function Dashboard() {
 
   // Dynamic icon and style mapping for fields
   const fieldIcons = {
-    // Water Rescue
     lifebuoy: { label: '구명환', icon: LifeBuoy, color: 'text-blue-600 bg-blue-100' },
     lifeJacket: { label: '구명조끼', icon: Shield, color: 'text-emerald-600 bg-emerald-100' },
     lifeline: { label: '구명줄', icon: Anchor, color: 'text-violet-600 bg-violet-100' },
     throwBag: { label: '드로우백', icon: Package, color: 'text-amber-600 bg-amber-100' },
-    
-    // Mountain Kit
     boxStatus: { label: '함 관리상태', icon: Package, color: 'text-blue-600 bg-blue-100' },
     drugStatus: { label: '구급약품 상태', icon: Shield, color: 'text-emerald-600 bg-emerald-100' },
     improvement: { label: '개선여부', icon: CheckCircle, color: 'text-violet-600 bg-violet-100' },
     manager: { label: '전담관리자 지정', icon: User, color: 'text-amber-600 bg-amber-100' },
-    
-    // Mountain Sign
     signStatus: { label: '표지판 관리상태', icon: MapPin, color: 'text-blue-600 bg-blue-100' },
     sktSignal: { label: 'SKT 통신상태', icon: Signal, color: 'text-emerald-600 bg-emerald-100' },
     ktSignal: { label: 'KT 통신상태', icon: Signal, color: 'text-violet-600 bg-violet-100' },
@@ -108,8 +106,11 @@ export default function Dashboard() {
         }
         const res = await axios.get(`/api/dashboard-summary?category=${activeCategoryId}`);
         setSummary(res.data);
-      } else {
+      } else if (activeTab === 'fireWater') {
         const res = await axios.get('/api/fire-waters/dashboard-summary');
+        setSummary(res.data);
+      } else if (activeTab === 'vehicle') {
+        const res = await axios.get('/api/vehicles/dashboard-summary');
         setSummary(res.data);
       }
     } catch (error) {
@@ -199,20 +200,20 @@ export default function Dashboard() {
   const stats = summary?.equipmentStats || {};
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 p-4 sm:p-8">
+    <div className="h-full overflow-y-auto bg-gray-50 p-4 sm:p-8 text-left">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Dynamic Header & Tab Selector */}
         <div className="flex justify-between items-center flex-wrap gap-4 text-left">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">현장 소방안전시설 관리 시스템</h1>
-            <p className="text-sm text-gray-500 mt-1">의령소방서 관내 안전시설물 및 소방용수 점검 현황입니다.</p>
+            <h1 className="text-2xl font-bold text-gray-800">현장 소방안전시설 및 장비 관리 시스템</h1>
+            <p className="text-sm text-gray-500 mt-1">의령소방서 관내 안전시설물, 소방용수 및 소방차량 현황입니다.</p>
           </div>
           
-          <div className="flex bg-gray-200 p-1 rounded-xl shadow-inner">
+          <div className="flex bg-gray-200 p-1 rounded-xl shadow-inner flex-wrap gap-1">
             <button
               onClick={() => setActiveTab('waterSafety')}
-              className={`flex items-center px-4 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all duration-200 ${
+              className={`flex items-center px-3.5 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all duration-200 ${
                 activeTab === 'waterSafety' 
                   ? 'bg-white text-red-700 shadow' 
                   : 'text-gray-600 hover:text-gray-900'
@@ -223,7 +224,7 @@ export default function Dashboard() {
             </button>
             <button
               onClick={() => setActiveTab('fireWater')}
-              className={`flex items-center px-4 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all duration-200 ${
+              className={`flex items-center px-3.5 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all duration-200 ${
                 activeTab === 'fireWater' 
                   ? 'bg-white text-red-700 shadow' 
                   : 'text-gray-600 hover:text-gray-900'
@@ -232,6 +233,17 @@ export default function Dashboard() {
               <Droplet className="w-4 h-4 mr-1.5" />
               소방용수조사
             </button>
+            <button
+              onClick={() => setActiveTab('vehicle')}
+              className={`flex items-center px-3.5 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all duration-200 ${
+                activeTab === 'vehicle' 
+                  ? 'bg-white text-red-700 shadow' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Truck className="w-4 h-4 mr-1.5" />
+              소방차량관리
+            </button>
           </div>
         </div>
 
@@ -239,15 +251,21 @@ export default function Dashboard() {
           <h2 className="text-lg font-bold text-gray-700">
             {activeTab === 'waterSafety' 
               ? `🌊 ${currentCategory?.name || '안전시설물'} 점검 현황 및 통계` 
-              : '🚒 소방용수조사 현황 및 통계'}
+              : activeTab === 'fireWater' 
+              ? '🚒 소방용수조사 현황 및 통계' 
+              : '🚛 소방차량 운용 및 점검 현황'}
           </h2>
           
           <Link 
-            to={activeTab === 'waterSafety' ? '/report' : '/fire-water-report'} 
+            to={
+              activeTab === 'waterSafety' ? '/report' : 
+              activeTab === 'fireWater' ? '/fire-water-report' : 
+              '/vehicle'
+            } 
             className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-sm text-xs sm:text-sm transition"
           >
             <Printer className="w-4 h-4 mr-2" />
-            보고서 출력 / 관리카드 인쇄
+            {activeTab === 'vehicle' ? '소방차량 대장 이동' : '보고서 출력 / 관리카드 인쇄'}
           </Link>
         </div>
 
@@ -279,7 +297,118 @@ export default function Dashboard() {
           <div className="p-16 text-center text-gray-500 font-semibold bg-white rounded-xl shadow-sm border border-gray-100">
             데이터 로딩중...
           </div>
+        ) : activeTab === 'vehicle' ? (
+          /* FIRE VEHICLE DASHBOARD SUMMARY */
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center space-x-4">
+                <div className="p-3 bg-blue-100 text-blue-600 rounded-full">
+                  <Truck className="w-7 h-7" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">전체 소방차량</p>
+                  <p className="text-2xl font-bold text-gray-900">{summary?.totalVehicles || 0}대</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center space-x-4">
+                <div className="p-3 bg-green-100 text-green-600 rounded-full">
+                  <CheckCircle className="w-7 h-7" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">정상 운용중</p>
+                  <p className="text-2xl font-bold text-green-600">{summary?.activeVehicles || 0}대</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center space-x-4">
+                <div className="p-3 bg-amber-100 text-amber-600 rounded-full">
+                  <Wrench className="w-7 h-7" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">점검/정비중</p>
+                  <p className="text-2xl font-bold text-amber-600">{summary?.inRepairVehicles || 0}대</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center space-x-4">
+                <div className="p-3 bg-red-100 text-red-600 rounded-full">
+                  <AlertTriangle className="w-7 h-7" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">점검시기도래/지연</p>
+                  <p className="text-2xl font-bold text-red-600">{summary?.alertCount || 0}대</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Vehicle Operation & Maintenance Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Recent Driving Logs */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Navigation className="w-5 h-5 text-violet-600" />
+                    <h2 className="text-base font-semibold text-gray-800">최근 차량 운행 기록</h2>
+                  </div>
+                  <Link to="/vehicle" className="text-xs text-violet-600 font-bold hover:underline">전체보기 &rarr;</Link>
+                </div>
+
+                <div className="divide-y divide-gray-100 text-xs">
+                  {summary?.recentLogs?.length > 0 ? (
+                    summary.recentLogs.map(log => (
+                      <div key={log._id} className="p-3.5 flex justify-between items-center hover:bg-gray-50">
+                        <div>
+                          <p className="font-bold text-gray-900">{log.vehicle?.name} ({log.vehicle?.vehicleNumber})</p>
+                          <p className="text-gray-500 mt-0.5">{log.affiliation} {log.driverName} • <span className="text-red-600 font-bold">{log.purpose}</span></p>
+                          <p className="text-[10px] text-gray-400 font-mono mt-0.5">{log.departureTime}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-bold text-sm text-red-600 font-mono">{log.distance} km</span>
+                          {log.fuelRefueled > 0 && <p className="text-[10px] text-amber-600 font-bold">주유 {log.fuelRefueled}L</p>}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center text-gray-400">최근 운행 기록이 없습니다.</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Recent Maintenances */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Wrench className="w-5 h-5 text-amber-600" />
+                    <h2 className="text-base font-semibold text-gray-800">최근 정비 및 점검 이력</h2>
+                  </div>
+                  <Link to="/vehicle" className="text-xs text-amber-600 font-bold hover:underline">전체보기 &rarr;</Link>
+                </div>
+
+                <div className="divide-y divide-gray-100 text-xs">
+                  {summary?.recentMaintenances?.length > 0 ? (
+                    summary.recentMaintenances.map(m => (
+                      <div key={m._id} className="p-3.5 flex justify-between items-center hover:bg-gray-50">
+                        <div>
+                          <p className="font-bold text-gray-900">{m.vehicle?.name} ({m.vehicle?.vehicleNumber})</p>
+                          <p className="text-gray-500 mt-0.5">{m.inspectorName} ({m.affiliation}) • <span className="text-amber-700 font-bold">{m.maintenanceType}</span></p>
+                          <p className="text-[10px] text-gray-400 font-mono mt-0.5">{m.inspectionDate}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-bold text-xs font-mono">{m.cost ? m.cost.toLocaleString() + '원' : '비용없음'}</span>
+                          {m.nextDueDate && <p className="text-[10px] text-purple-700 font-bold">차기 {m.nextDueDate}</p>}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center text-gray-400">최근 정비 기록이 없습니다.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
         ) : (
+          /* WATER SAFETY & FIRE WATER SUMMARY */
           <>
             {/* Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -332,7 +461,6 @@ export default function Dashboard() {
 
             {/* Equipment Stats */}
             {activeTab === 'waterSafety' ? (
-              // Water Safety / Dynamic Categories Equipment Stats
               currentCategory?.inspectionFields?.length > 0 && (
                 <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 space-y-4 text-left">
                   <h2 className="text-base font-semibold text-gray-800 flex items-center">
@@ -387,7 +515,6 @@ export default function Dashboard() {
                 </div>
               )
             ) : (
-              // Fire Water Equipment Stats
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 space-y-4 text-left">
                 <h2 className="text-base font-semibold text-gray-800 flex items-center">
                   <span className="inline-block w-2.5 h-2.5 bg-blue-600 rounded-full mr-2"></span>
