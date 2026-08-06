@@ -6,9 +6,8 @@ const fireWaterSchema = new mongoose.Schema({
   name: { type: String, required: true }, // 용수명
   type: { 
     type: String, 
-    required: true, 
-    enum: ['지상소화전', '지하소화전', '급수탑', '저수조', '비상소화장치'] 
-  }, // 구분
+    required: true
+  }, // 구분 (지상소화전, 지하소화전, 급수탑, 저수조, 비상소화장치, 자연수리 등)
   legalType: { type: String, enum: ['법정', '비법정'], default: '법정' }, // 법정구분
   hydId: { type: String, default: '' }, // HYD_ID
   fireStation: { type: String, default: '의령소방서' }, // 소방서

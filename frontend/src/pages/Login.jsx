@@ -1,146 +1,36 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Mail, Lock, KeyRound, Timer, ShieldAlert, Loader2, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Shield, Lock, User as UserIcon, LogIn, CheckCircle2, AlertCircle } from 'lucide-react';
 
 function Login() {
-  const [activeTab, setActiveTab] = useState('otp'); // 'otp' or 'password'
-  const [email, setEmail] = useState('');
+  const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
-  
-  // OTP States
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timer, setTimer] = useState(600); // 10 minutes in seconds
-  const [isTimerActive, setIsTimerActive] = useState(false);
-  
-  // UI Status States
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  
-  const otpInputsRef = useRef([]);
+
   const navigate = useNavigate();
 
-  // Handle email validation
-  const allowedDomain = '@korea.kr';
-  const isEmailDomainValid = email.toLowerCase().endsWith(allowedDomain);
+  // Preset role accounts for 1-click selection during demonstration / interview
+  const presetAccounts = [
+    { label: '의령 센터 사용자', id: 'user_uryeong', pass: 'pass1234', roleBadge: '센터 모바일+현황' },
+    { label: '부림 센터 사용자', id: 'user_burim', pass: 'pass1234', roleBadge: '센터 모바일+현황' },
+    { label: '정곡 센터 사용자', id: 'user_jeonggok', pass: 'pass1234', roleBadge: '센터 모바일+현황' },
+    { label: '의령 센터 승인자', id: 'approver_uryeong', pass: 'pass1234', roleBadge: '센터장 승인+현황' },
+    { label: '의령소방서 관리자', id: 'admin_station', pass: 'pass1234', roleBadge: '본서 전체 관리' },
+    { label: '소방본부 관리자', id: 'admin_hq', pass: 'pass1234', roleBadge: '본부 전체 관리' }
+  ];
 
-  // Timer Effect for OTP
-  useEffect(() => {
-    let interval = null;
-    if (isTimerActive && timer > 0) {
-      interval = setInterval(() => {
-        setTimer((prevTime) => prevTime - 1);
-      }, 1000);
-    } else if (timer === 0) {
-      setIsTimerActive(false);
-      setError('인증 번호 유효 시간이 만료되었습니다. 다시 요청해 주세요.');
-    }
-    return () => clearInterval(interval);
-  }, [isTimerActive, timer]);
-
-  // Format timer text (MM:SS)
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // OTP send request
-  const handleSendOTP = async (e) => {
-    e.preventDefault();
-    if (!email) {
-      setError('이메일을 입력해 주세요.');
-      return;
-    }
-    if (!isEmailDomainValid) {
-      setError(`공직자통합메일(${allowedDomain})만 사용 가능합니다.`);
-      return;
-    }
-
-    setLoading(true);
+  const handleSelectPreset = (acc) => {
+    setLoginId(acc.id);
+    setPassword(acc.pass);
     setError('');
-    setSuccess('');
-
-    try {
-      const res = await axios.post('/api/auth/request-otp', { email });
-      setOtpSent(true);
-      setTimer(600); // Reset timer
-      setIsTimerActive(true);
-      setSuccess(res.data.message || '이메일로 인증번호가 발송되었습니다.');
-      
-      // Focus on first OTP input
-      setTimeout(() => {
-        if (otpInputsRef.current[0]) {
-          otpInputsRef.current[0].focus();
-        }
-      }, 100);
-    } catch (err) {
-      setError(err.response?.data?.message || '인증번호 발송에 실패했습니다. 다시 시도해 주세요.');
-    } finally {
-      setLoading(false);
-    }
   };
 
-  // OTP Input handler
-  const handleOtpChange = (element, index, value) => {
-    if (isNaN(value)) return false;
-
-    const newOtp = [...otp];
-    newOtp[index] = value.substring(value.length - 1); // Keep last char only
-    setOtp(newOtp);
-
-    // Focus next input if value is entered
-    if (value && index < 5) {
-      otpInputsRef.current[index + 1].focus();
-    }
-  };
-
-  const handleOtpKeyDown = (e, index) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      // Focus previous input on backspace if current is empty
-      otpInputsRef.current[index - 1].focus();
-    }
-  };
-
-  // OTP Login execution
-  const handleOTPLogin = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    const otpCode = otp.join('');
-    if (otpCode.length < 6) {
-      setError('6자리 인증번호를 모두 입력해 주세요.');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const res = await axios.post('/api/auth/verify-otp', {
-        email,
-        otp: otpCode
-      });
-
-      // Save token and user info
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-
-      // Redirect to home page
-      navigate('/');
-      window.location.reload(); // Refresh to update App states
-    } catch (err) {
-      setError(err.response?.data?.message || '인증에 실패했습니다. 코드를 다시 확인해 주세요.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Password Login execution
-  const handlePasswordLogin = async (e) => {
-    e.preventDefault();
-    if (!email || !password) {
-      setError('아이디와 비밀번호를 모두 입력해 주세요.');
+    if (!loginId.trim() || !password.trim()) {
+      setError('아이디(이메일)와 비밀번호를 입력해 주세요.');
       return;
     }
 
@@ -149,271 +39,127 @@ function Login() {
 
     try {
       const res = await axios.post('/api/auth/login', {
-        email,
+        email: loginId,
         password
       });
 
-      // Save token and user info
-      localStorage.setItem('token', res.data.token);
-      
-      // Fetch user profile to get complete details
-      axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
-      const profileRes = await axios.get('/api/users/profile');
-      localStorage.setItem('user', JSON.stringify(profileRes.data));
+      const { token, user } = res.data;
+      localStorage.setItem('token', token);
+      if (user) {
+        localStorage.setItem('user', JSON.stringify(user));
+      } else {
+        localStorage.setItem('user', JSON.stringify({ email: loginId, role: 'center_user' }));
+      }
 
-      // Redirect to home page
+      // Navigate to dashboard / fire water view
       navigate('/');
-      window.location.reload(); // Refresh to update App states
     } catch (err) {
-      setError(err.response?.data?.message || '로그인 정보가 올바르지 않습니다.');
+      console.error('Login Failed:', err);
+      setError(err.response?.data?.message || '로그인에 실패했습니다. 아이디 및 비밀번호를 확인해 주세요.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4 relative overflow-hidden font-sans">
-      {/* Background decoration */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-red-900/10 blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-slate-800/50 blur-[120px] pointer-events-none"></div>
-
-      <div className="max-w-md w-full z-10">
-        {/* Logo and header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-red-600 to-red-500 text-white shadow-xl shadow-red-500/20 mb-4 animate-pulse">
-            <KeyRound className="w-8 h-8" />
+    <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-slate-900 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-lg p-6 sm:p-8 space-y-6 text-left">
+        
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-red-100 text-red-700 mb-1">
+            <Shield className="w-8 h-8" />
           </div>
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">의령소방서</h2>
-          <p className="mt-2 text-sm text-slate-400">수난안전시설물 점검 관리 시스템</p>
+          <h1 className="text-2xl font-black text-gray-900">의령소방서 통합안전점검</h1>
+          <p className="text-xs text-gray-500 font-medium">
+            소방용수시설 및 안전시설물 통합 로그인 시스템
+          </p>
         </div>
 
-        {/* Login Card */}
-        <div className="bg-slate-800/90 backdrop-blur-xl border border-slate-700/60 rounded-3xl shadow-2xl p-8 overflow-hidden transition-all duration-300">
-          
-          {/* Tabs */}
-          <div className="flex p-1 bg-slate-900/80 rounded-2xl mb-8 border border-slate-700/30">
-            <button
-              onClick={() => {
-                setActiveTab('otp');
-                setError('');
-                setSuccess('');
-              }}
-              className={`flex-1 py-3 text-sm font-semibold rounded-xl transition-all duration-200 ${
-                activeTab === 'otp'
-                  ? 'bg-red-600 text-white shadow-md shadow-red-600/10'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              OTP 로그인
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('password');
-                setError('');
-                setSuccess('');
-              }}
-              className={`flex-1 py-3 text-sm font-semibold rounded-xl transition-all duration-200 ${
-                activeTab === 'password'
-                  ? 'bg-red-600 text-white shadow-md shadow-red-600/10'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              비밀번호 로그인
-            </button>
+        {/* Quick Role Account Preset Selector */}
+        <div className="bg-red-50/70 p-3.5 rounded-xl border border-red-100 space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-bold text-red-900">🔑 역할별 전용 계정 빠른 선택</span>
+            <span className="text-[10px] text-red-600">클릭 시 자동 입력</span>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {presetAccounts.map((acc, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => handleSelectPreset(acc)}
+                className="text-left p-2 rounded-lg bg-white border border-red-200/80 hover:bg-red-100/50 hover:border-red-400 transition shadow-2xs group"
+              >
+                <div className="font-bold text-xs text-gray-800 group-hover:text-red-700">{acc.label}</div>
+                <div className="text-[10px] text-gray-500 truncate">{acc.roleBadge}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Error Alert */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded-xl text-xs font-bold flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Main Login Form */}
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              아이디 / 이메일
+            </label>
+            <div className="relative">
+              <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
+                placeholder="예: user_uryeong@korea.kr 또는 user_uryeong"
+                className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                required
+              />
+            </div>
           </div>
 
-          {/* Feedback alerts */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-950/40 border border-red-500/30 rounded-2xl flex items-start space-x-3 text-red-200 text-sm animate-fadeIn">
-              <ShieldAlert className="w-5 h-5 shrink-0 text-red-400" />
-              <span>{error}</span>
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              비밀번호
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="비밀번호 입력 (기본: pass1234)"
+                className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                required
+              />
             </div>
-          )}
-
-          {success && (
-            <div className="mb-6 p-4 bg-emerald-950/40 border border-emerald-500/30 rounded-2xl flex items-start space-x-3 text-emerald-200 text-sm animate-fadeIn">
-              <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-400" />
-              <span>{success}</span>
-            </div>
-          )}
-
-          {/* Forms */}
-          {activeTab === 'otp' ? (
-            /* OTP LOGIN FORM */
-            <form onSubmit={otpSent ? handleOTPLogin : handleSendOTP} className="space-y-6">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  회사 이메일 주소
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
-                    <Mail className="w-5 h-5" />
-                  </div>
-                  <input
-                    type="email"
-                    required
-                    disabled={otpSent}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="example@korea.kr"
-                    className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border ${
-                      email && !isEmailDomainValid
-                        ? 'border-amber-500 focus:ring-amber-500'
-                        : 'border-slate-700 focus:ring-red-500'
-                    } rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition duration-200 disabled:opacity-50`}
-                  />
-                </div>
-                {email && !isEmailDomainValid && (
-                  <p className="mt-2 text-xs text-amber-400 flex items-center">
-                    <ShieldAlert className="w-3.5 h-3.5 mr-1" />
-                    공직자통합메일 주소(@korea.kr)만 등록/로그인 가능합니다.
-                  </p>
-                )}
-              </div>
-
-              {otpSent && (
-                <div className="space-y-4 animate-slideDown">
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                      인증번호 입력 (6자리)
-                    </label>
-                    <span className={`text-xs font-bold flex items-center ${timer < 120 ? 'text-amber-400 animate-pulse' : 'text-red-400'}`}>
-                      <Timer className="w-3.5 h-3.5 mr-1" />
-                      {formatTime(timer)}
-                    </span>
-                  </div>
-                  
-                  {/* Character Code Inputs */}
-                  <div className="flex justify-between space-x-2">
-                    {otp.map((digit, index) => (
-                      <input
-                        key={index}
-                        type="text"
-                        maxLength="1"
-                        required
-                        value={digit}
-                        ref={(el) => (otpInputsRef.current[index] = el)}
-                        onChange={(e) => handleOtpChange(e.target, index, e.target.value)}
-                        onKeyDown={(e) => handleOtpKeyDown(e, index)}
-                        className="w-12 h-14 text-center bg-slate-900 border border-slate-700 rounded-xl text-white text-xl font-bold focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-150"
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={loading || (email && !isEmailDomainValid)}
-                  className="w-full flex items-center justify-center py-3.5 px-4 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold rounded-xl shadow-lg shadow-red-600/10 hover:shadow-red-500/20 hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition duration-150 disabled:opacity-50 disabled:pointer-events-none"
-                >
-                  {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  ) : otpSent ? (
-                    <>
-                      로그인 완료
-                      <ArrowRight className="w-5 h-5 ml-2" />
-                    </>
-                  ) : (
-                    <>
-                      인증번호 요청
-                      <ArrowRight className="w-5 h-5 ml-2" />
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {otpSent && (
-                <div className="text-center mt-4">
-                  <button
-                    type="button"
-                    onClick={handleSendOTP}
-                    className="text-xs font-semibold text-slate-400 hover:text-white underline transition"
-                  >
-                    인증번호 재전송
-                  </button>
-                </div>
-              )}
-            </form>
-          ) : (
-            /* PASSWORD LOGIN FORM */
-            <form onSubmit={handlePasswordLogin} className="space-y-6">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  아이디 또는 이메일
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
-                    <Mail className="w-5 h-5" />
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="아이디 또는 이메일 입력"
-                    className="block w-full pl-11 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition duration-200"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    비밀번호
-                  </label>
-                  <Link
-                    to="/forgot-password"
-                    className="text-xs font-semibold text-red-400 hover:text-red-300 transition"
-                  >
-                    비밀번호 재설정
-                  </Link>
-                </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
-                    <Lock className="w-5 h-5" />
-                  </div>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="block w-full pl-11 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition duration-200"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center py-3.5 px-4 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold rounded-xl shadow-lg shadow-red-600/10 hover:shadow-red-500/20 hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition duration-150 disabled:opacity-50 disabled:pointer-events-none"
-                >
-                  {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  ) : (
-                    <>
-                      로그인
-                      <ArrowRight className="w-5 h-5 ml-2" />
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* Register Footer Link */}
-          <div className="mt-8 text-center border-t border-slate-700/40 pt-6">
-            <p className="text-sm text-slate-400">
-              계정이 없으신가요?{' '}
-              <Link to="/register" className="font-semibold text-red-400 hover:text-red-300 transition">
-                회원가입 하기
-              </Link>
-            </p>
           </div>
 
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <span>로그인 중...</span>
+            ) : (
+              <>
+                <LogIn className="w-4 h-4" /> 로그인
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="pt-2 text-center border-t border-gray-100">
+          <p className="text-[11px] text-gray-400">
+            의령소방서 수난안전시설물 및 소방용수 통합 현황 관리 시스템
+          </p>
         </div>
       </div>
     </div>

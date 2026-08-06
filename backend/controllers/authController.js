@@ -199,31 +199,36 @@ const generateEmailVerificationToken = (userId) => {
 
 // 회원가입
 exports.register = async (req, res) => {
-  let { email, password } = req.body;
-  email = email.toLowerCase(); // Convert email to lowercase
-
-  // --- ⭐ Added Email Domain Validation (Server-side) ⭐ ---
-  const allowedDomain = process.env.ALLOWED_EMAIL_DOMAIN || '@seohan.com';
-  if (!email || !email.endsWith(allowedDomain)) {
-      return res.status(400).json({ message: `You must use an email from the '${allowedDomain}' domain to register.` });
+  let { email, password, name, role, center } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required.' });
   }
+  email = email.toLowerCase().trim();
 
   try {
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
-      return res.status(400).json({ message: 'Email already in use' });
+      return res.status(400).json({ message: 'Email or ID is already registered.' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ email, password: hashedPassword, isVerified: false });
+    const employeeId = email.includes('@') ? email.split('@')[0].toUpperCase() : email.toUpperCase();
 
-    const emailToken = generateEmailVerificationToken(user._id);
-    await sendVerificationEmail(email, emailToken);
+    const user = new User({ 
+      email, 
+      password: hashedPassword, 
+      name: name || employeeId,
+      employeeId,
+      role: role || 'center_user',
+      center: center || '의령',
+      isVerified: true,
+      isActive: true
+    });
 
     await user.save();
 
-    res.status(201).json({ message: 'User registered. Please verify your email.' });
+    res.status(201).json({ message: 'User registered successfully.' });
   } catch (error) {
     console.error('Register Error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -235,44 +240,47 @@ exports.login = async (req, res) => {
   let { email, username, password } = req.body;
   const loginId = (username || email || '').toLowerCase().trim();
 
+  if (!loginId || !password) {
+    return res.status(400).json({ message: 'Please provide ID/Email and password.' });
+  }
+
   try {
-    const allowedDomain = process.env.ALLOWED_EMAIL_DOMAIN || '@korea.kr';
     const searchConditions = [
       { email: loginId },
       { employeeId: loginId.toUpperCase() }
     ];
 
     if (!loginId.includes('@')) {
-      const fullEmail = `${loginId}${allowedDomain}`;
-      searchConditions.push({ email: fullEmail });
+      searchConditions.push({ email: `${loginId}@korea.kr` });
+      searchConditions.push({ email: `${loginId}@local` });
     }
 
     const user = await User.findOne({
       $or: searchConditions
     });
     
-    // For security, check user existence and password match first with a generic message.
     if (!user) {
-        return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-        return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
     
-    // After credentials are correct, check for account status (verified, active).
-    if (!user.isVerified) {
-        return res.status(403).json({ message: 'Account not verified. Please check your email.' });
-    }
-
     if (!user.isActive) {
-        return res.status(403).json({ message: 'Your account has been deactivated. Please contact an administrator.' });
+      return res.status(403).json({ message: 'Your account has been deactivated. Please contact an administrator.' });
     }
 
-    // If all checks pass, create and send the token.
+    // Auto-update isVerified if false for legacy accounts
+    if (!user.isVerified) {
+      user.isVerified = true;
+      await user.save();
+    }
+
+    // Create JWT token
     const token = jwt.sign(
-      { userId: user._id, email: user.email, role: user.role }, // Add role to the token
+      { userId: user._id, email: user.email, role: user.role, center: user.center },
       process.env.JWT_SECRET || 'fallback_jwt_secret',
       { expiresIn: '1d' }
     );
@@ -285,8 +293,19 @@ exports.login = async (req, res) => {
       userAgent: req.headers['user-agent']
     });
 
-    res.status(200).json({ token });
+    res.status(200).json({ 
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name || user.employeeId || user.email,
+        role: user.role,
+        center: user.center || '의령',
+        employeeId: user.employeeId
+      }
+    });
   } catch (error) {
+    console.error('Login Error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

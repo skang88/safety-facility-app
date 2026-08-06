@@ -94,7 +94,7 @@ export default function FireWaterEditModal({ fireWater, onClose, onSuccess }) {
     }
   };
 
-  const fireWaterTypes = ['지상소화전', '지하소화전', '급수탑', '저수조', '비상소화장치'];
+  const fireWaterTypes = ['지상소화전', '지하소화전', '급수탑', '저수조', '비상소화장치', '자연수리'];
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">

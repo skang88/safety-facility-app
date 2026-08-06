@@ -154,7 +154,10 @@ function App() {
                       {user.name || user.employeeId || user.email.split('@')[0]}
                     </span>
                     <span className="text-[10px] text-red-200">
-                      {user.role === 'admin' ? '관리자' : '점검 요원'}
+                      {user.role === 'station_admin' ? '의령소방서 관리자' :
+                       user.role === 'hq_admin' ? '소방본부 관리자' :
+                       user.role === 'center_approver' ? '센터 승인자(센터장)' :
+                       user.role === 'center_user' ? '센터 사용자' : '시스템 관리자'}
                     </span>
                   </div>
                   <button

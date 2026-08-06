@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "import-data": "node scripts/importExcel.js"
+    "import-data": "node scripts/importExcel.js",
+    "seed:fire-water": "node scripts/seedFireWaterFromHtml.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -6,6 +6,8 @@ const dotenv = require('dotenv');
 const path = require('path');
 const apiRoutes = require('./routes/api');
 const seedDrowningRiskData = require('./utils/seedDrowningRisk');
+const seedFireWaterData = require('./utils/seedFireWater');
+const seedUsers = require('./utils/seedUsers');
 
 dotenv.config();
 
@@ -32,8 +34,10 @@ mongoose.connect(MONGO_URI)
   .then(async () => {
     console.log('Connected to MongoDB');
 
-    // Auto-seed Gyeongnam drowning accident risk dataset if DB is empty
+    // Auto-seed datasets if DB is empty
     await seedDrowningRiskData();
+    await seedFireWaterData();
+    await seedUsers();
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

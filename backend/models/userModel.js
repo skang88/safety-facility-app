@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema({
   },
   isVerified: {
     type: Boolean,
-    default: false
+    default: true
   },
   isActive: {
     type: Boolean,
@@ -33,8 +33,12 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
-    default: 'user'
+    enum: ['center_user', 'center_approver', 'station_admin', 'hq_admin', 'user', 'admin'],
+    default: 'center_user'
+  },
+  center: {
+    type: String,
+    default: '의령'
   },
   employeeId: {
     type: String,

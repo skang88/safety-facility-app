@@ -42,9 +42,24 @@ export default function FireWaterListView() {
   // View mode inside Manage tab: 'list' or 'map'
   const [viewMode, setViewMode] = useState('list');
 
+  const userJson = localStorage.getItem('user');
+  let currentUser = null;
+  try {
+    currentUser = userJson && userJson !== 'undefined' ? JSON.parse(userJson) : null;
+  } catch (e) {
+    currentUser = null;
+  }
+
+  const userRole = currentUser?.role || 'center_user';
+  const userCenter = currentUser?.center || '의령';
+
+  const isCenterUser = userRole === 'center_user';
+  const isCenterApprover = userRole === 'center_approver';
+  const isAdmin = ['station_admin', 'hq_admin', 'admin'].includes(userRole);
+
   // Filters
   const [stationFilter, setStationFilter] = useState('전체');
-  const [regionFilter, setRegionFilter] = useState('전체');
+  const [regionFilter, setRegionFilter] = useState(isCenterUser ? userCenter : '전체');
   const [legalTypeFilter, setLegalTypeFilter] = useState('전체');
   const [typeFilter, setTypeFilter] = useState('전체');
   const [statusFilter, setStatusFilter] = useState('전체');
@@ -201,7 +216,7 @@ export default function FireWaterListView() {
     return 0;
   });
 
-  const fireWaterTypes = ['지상소화전', '지하소화전', '급수탑', '저수조', '비상소화장치'];
+  const fireWaterTypes = ['지상소화전', '지하소화전', '급수탑', '저수조', '비상소화장치', '자연수리'];
 
   // Stats calculation
   const totalCount = fireWaters.length;
@@ -240,21 +255,25 @@ export default function FireWaterListView() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Download/Upload Tools */}
-            <button
-              onClick={() => excelInputRef.current.click()}
-              className="flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs transition shadow-sm"
-              title="엑셀 업로드"
-            >
-              <Upload className="w-3.5 h-3.5 mr-1" /> 업로드
-            </button>
-            <input
-              type="file"
-              accept=".xlsx, .xls"
-              onChange={handleExcelUpload}
-              className="hidden"
-              ref={excelInputRef}
-            />
+            {/* Download/Upload Tools for Admins */}
+            {isAdmin && (
+              <>
+                <button
+                  onClick={() => excelInputRef.current.click()}
+                  className="flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs transition shadow-sm"
+                  title="엑셀 업로드"
+                >
+                  <Upload className="w-3.5 h-3.5 mr-1" /> DB 업로드
+                </button>
+                <input
+                  type="file"
+                  accept=".xlsx, .xls"
+                  onChange={handleExcelUpload}
+                  className="hidden"
+                  ref={excelInputRef}
+                />
+              </>
+            )}
 
             <a
               href="/api/fire-waters/export-excel"
@@ -291,7 +310,7 @@ export default function FireWaterListView() {
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
-            <LayoutGrid className="w-4 h-4" /> 시설관리 ({filtered.length})
+            <LayoutGrid className="w-4 h-4" /> {isCenterApprover ? '시설 관리 & 점검 승인' : '현황 관리'} ({filtered.length})
           </button>
 
           <button
@@ -302,35 +321,39 @@ export default function FireWaterListView() {
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
-            <BarChart2 className="w-4 h-4" /> 종합 통계
+            <BarChart2 className="w-4 h-4" /> 현황 통계
           </button>
 
-          <button
-            onClick={() => setActiveTab('audit')}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'audit'
-                ? 'border-red-600 text-red-600 bg-red-50/50 rounded-t-lg'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" /> 데이터 검수 & 불량이력
-            {auditNeedCount > 0 && (
-              <span className="bg-red-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-extrabold">
-                {auditNeedCount}
-              </span>
-            )}
-          </button>
+          {(isCenterApprover || isAdmin) && (
+            <button
+              onClick={() => setActiveTab('audit')}
+              className={`px-4 py-2.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'audit'
+                  ? 'border-red-600 text-red-600 bg-red-50/50 rounded-t-lg'
+                  : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" /> 데이터 검수 & 승인
+              {auditNeedCount > 0 && (
+                <span className="bg-red-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-extrabold">
+                  {auditNeedCount}
+                </span>
+              )}
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveTab('data')}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'data'
-                ? 'border-red-600 text-red-600 bg-red-50/50 rounded-t-lg'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            <Database className="w-4 h-4" /> DB 교환 & 관리
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab('data')}
+              className={`px-4 py-2.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'data'
+                  ? 'border-red-600 text-red-600 bg-red-50/50 rounded-t-lg'
+                  : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              <Database className="w-4 h-4" /> DB 교환 & 마스터 관리
+            </button>
+          )}
         </div>
       </div>
 
