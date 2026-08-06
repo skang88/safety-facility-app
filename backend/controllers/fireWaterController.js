@@ -51,20 +51,45 @@ exports.getFireWaterList = async (req, res) => {
 // Create fire water target
 exports.createFireWater = async (req, res) => {
   try {
-    const { serialNumber, name, type, region, address, coordinates, diameter, installDate, details } = req.body;
+    const { 
+      serialNumber, masterId, name, type, legalType, hydId, fireStation, region, subUnit,
+      city, town, village, address, nearbyBuilding, nearbyDistance, coordinates, 
+      diameter, waterPressure, signBoard, protectiveFrame, installDate, 
+      installer, inspector, manager, matchingStatus, matchingReason, auditResult, needsAudit, details 
+    } = req.body;
     
     const fireWater = new FireWater({
       serialNumber,
+      masterId: masterId || '',
       name,
       type,
+      legalType: legalType || '법정',
+      hydId: hydId || '',
+      fireStation: fireStation || '의령소방서',
       region,
+      subUnit: subUnit || '',
+      city: city || '의령군',
+      town: town || '',
+      village: village || '',
       address,
+      nearbyBuilding: nearbyBuilding || '',
+      nearbyDistance: nearbyDistance || 0,
       location: {
         type: 'Point',
         coordinates: coordinates && coordinates.length === 2 ? coordinates : [128.2570, 35.3168]
       },
       diameter: diameter || '',
+      waterPressure: waterPressure || '',
+      signBoard: signBoard || '×',
+      protectiveFrame: protectiveFrame || '×',
       installDate: installDate || '',
+      installer: installer || '시군',
+      inspector: inspector || '소방서',
+      manager: manager || '시군',
+      matchingStatus: matchingStatus || '자동매칭',
+      matchingReason: matchingReason || '신규등록',
+      auditResult: auditResult || '정상',
+      needsAudit: needsAudit || 'N',
       details: details || ''
     });
 
@@ -79,25 +104,31 @@ exports.createFireWater = async (req, res) => {
 exports.updateFireWater = async (req, res) => {
   try {
     const { id } = req.params;
-    const { serialNumber, name, type, region, address, coordinates, diameter, installDate, details } = req.body;
+    const body = req.body;
     
     const fireWater = await FireWater.findById(id);
     if (!fireWater) return res.status(404).json({ error: 'FireWater not found' });
 
-    if (serialNumber !== undefined) fireWater.serialNumber = serialNumber;
-    if (name !== undefined) fireWater.name = name;
-    if (type !== undefined) fireWater.type = type;
-    if (region !== undefined) fireWater.region = region;
-    if (address !== undefined) fireWater.address = address;
-    if (coordinates && coordinates.length === 2) {
+    const fields = [
+      'serialNumber', 'masterId', 'name', 'type', 'legalType', 'hydId', 'fireStation', 
+      'region', 'subUnit', 'city', 'town', 'village', 'address', 'nearbyBuilding', 
+      'nearbyDistance', 'diameter', 'waterPressure', 'signBoard', 'protectiveFrame', 
+      'installDate', 'installer', 'inspector', 'manager', 'matchingStatus', 
+      'matchingReason', 'auditResult', 'needsAudit', 'details'
+    ];
+
+    fields.forEach(field => {
+      if (body[field] !== undefined) {
+        fireWater[field] = body[field];
+      }
+    });
+
+    if (body.coordinates && body.coordinates.length === 2) {
       fireWater.location = {
         type: 'Point',
-        coordinates
+        coordinates: body.coordinates
       };
     }
-    if (diameter !== undefined) fireWater.diameter = diameter;
-    if (installDate !== undefined) fireWater.installDate = installDate;
-    if (details !== undefined) fireWater.details = details;
 
     await fireWater.save();
     res.json(fireWater);
@@ -397,3 +428,67 @@ exports.getFireWaterDashboardSummary = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Re-validate Data Audit for all fire water facilities
+exports.revalidateDataAudit = async (req, res) => {
+  try {
+    const list = await FireWater.find();
+    let auditedCount = 0;
+    let normalCount = 0;
+    let needsAuditCount = 0;
+    let conflictCount = 0;
+
+    for (const item of list) {
+      auditedCount++;
+      let issues = [];
+      
+      // Validation checks
+      if (!item.location || !item.location.coordinates || item.location.coordinates[0] === 0 || item.location.coordinates[1] === 0) {
+        issues.push('좌표누락');
+      } else {
+        const [lng, lat] = item.location.coordinates;
+        if (lng < 124 || lng > 132 || lat < 33 || lat > 39) {
+          issues.push('좌표범위오류');
+        }
+      }
+
+      if (!item.serialNumber) {
+        issues.push('관리번호누락');
+      }
+
+      if (!item.address) {
+        issues.push('주소누락');
+      }
+
+      if (issues.length > 0) {
+        item.auditResult = issues.join(', ');
+        item.needsAudit = 'Y';
+        needsAuditCount++;
+      } else {
+        item.auditResult = '정상';
+        item.needsAudit = 'N';
+        normalCount++;
+      }
+
+      if (item.matchingStatus === '검수필요' || item.matchingStatus === '충돌') {
+        conflictCount++;
+      }
+
+      await item.save();
+    }
+
+    res.json({
+      message: '전체 데이터 검수가 완료되었습니다.',
+      summary: {
+        total: auditedCount,
+        normal: normalCount,
+        needsAudit: needsAuditCount,
+        conflicts: conflictCount,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+

@@ -29,4 +29,7 @@ router.post('/fire-waters/import-excel', upload.single('excel'), fireWaterContro
 router.get('/fire-waters/export-excel', fireWaterController.downloadFireWaterExcel);
 router.get('/fire-waters/export-results-excel', fireWaterController.downloadFireWaterResultsExcel);
 
+// Data Audit Route
+router.post('/fire-waters/audit/revalidate', fireWaterController.revalidateDataAudit);
+
 module.exports = router;

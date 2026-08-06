@@ -3,19 +3,27 @@ import axios from 'axios';
 import { X, Loader2, MapPin } from 'lucide-react';
 
 export default function FireWaterEditModal({ fireWater, onClose, onSuccess }) {
-  // If fireWater is null, it means we are creating a new one
   const isEdit = !!fireWater;
   
   const [serialNumber, setSerialNumber] = useState(fireWater?.serialNumber || '');
+  const [masterId, setMasterId] = useState(fireWater?.masterId || '');
+  const [hydId, setHydId] = useState(fireWater?.hydId || '');
   const [name, setName] = useState(fireWater?.name || '');
   const [type, setType] = useState(fireWater?.type || '지상소화전');
+  const [legalType, setLegalType] = useState(fireWater?.legalType || '법정');
   const [region, setRegion] = useState(fireWater?.region || '의령');
+  const [town, setTown] = useState(fireWater?.town || '');
+  const [village, setVillage] = useState(fireWater?.village || '');
   const [address, setAddress] = useState(fireWater?.address || '');
+  const [nearbyBuilding, setNearbyBuilding] = useState(fireWater?.nearbyBuilding || '');
   
   const [longitude, setLongitude] = useState(fireWater?.location?.coordinates?.[0]?.toString() || '128.2570');
   const [latitude, setLatitude] = useState(fireWater?.location?.coordinates?.[1]?.toString() || '35.3168');
   
   const [diameter, setDiameter] = useState(fireWater?.diameter || '');
+  const [waterPressure, setWaterPressure] = useState(fireWater?.waterPressure || '');
+  const [signBoard, setSignBoard] = useState(fireWater?.signBoard || '×');
+  const [protectiveFrame, setProtectiveFrame] = useState(fireWater?.protectiveFrame || '×');
   const [installDate, setInstallDate] = useState(fireWater?.installDate || '');
   const [details, setDetails] = useState(fireWater?.details || '');
   
@@ -53,12 +61,21 @@ export default function FireWaterEditModal({ fireWater, onClose, onSuccess }) {
     try {
       const data = {
         serialNumber,
+        masterId,
+        hydId,
         name,
         type,
+        legalType,
         region,
+        town,
+        village,
         address,
+        nearbyBuilding,
         coordinates: [lngVal, latVal],
         diameter,
+        waterPressure,
+        signBoard,
+        protectiveFrame,
         installDate,
         details
       };
@@ -83,12 +100,12 @@ export default function FireWaterEditModal({ fireWater, onClose, onSuccess }) {
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
       <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose}></div>
       
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md relative z-10 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg relative z-10 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
           <div className="flex items-center text-red-600 gap-2">
             <MapPin className="w-5 h-5" />
             <h2 className="text-lg font-bold text-gray-800">
-              {isEdit ? '소방용수 정보 및 좌표 수정' : '신규 소방용수 대상물 등록'}
+              {isEdit ? '소방용수 정보 및 마스터 DB 수정' : '신규 소방용수 대상물 등록'}
             </h2>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -104,22 +121,66 @@ export default function FireWaterEditModal({ fireWater, onClose, onSuccess }) {
               </div>
             )}
 
-            {/* Serial Number */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Serial Number & HYD_ID */}
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  관리번호 / 연번
+                  표준관리번호
                 </label>
                 <input
                   type="text"
                   value={serialNumber}
                   onChange={(e) => setSerialNumber(e.target.value)}
-                  placeholder="예: 의령-1"
+                  placeholder="예: 부림-A-1"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500 outline-none"
                   disabled={isLoading}
                 />
               </div>
               <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  HYD_ID
+                </label>
+                <input
+                  type="text"
+                  value={hydId}
+                  onChange={(e) => setHydId(e.target.value)}
+                  placeholder="예: 4800011007"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500 outline-none"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  MASTER_ID
+                </label>
+                <input
+                  type="text"
+                  value={masterId}
+                  onChange={(e) => setMasterId(e.target.value)}
+                  placeholder="예: UYR-0001"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500 outline-none"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* Name & Types */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-1">
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  법정구분
+                </label>
+                <select
+                  value={legalType}
+                  onChange={(e) => setLegalType(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:ring-red-500 focus:border-red-500 outline-none"
+                  disabled={isLoading}
+                >
+                  <option value="법정">법정</option>
+                  <option value="비법정">비법정</option>
+                </select>
+              </div>
+              <div className="col-span-1">
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   구분 (종류)
                 </label>
@@ -134,29 +195,9 @@ export default function FireWaterEditModal({ fireWater, onClose, onSuccess }) {
                   ))}
                 </select>
               </div>
-            </div>
-
-            {/* Name Field */}
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">
-                용수명 (명칭)
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="예: 의령시장 지상소화전"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500 outline-none"
-                disabled={isLoading}
-                required
-              />
-            </div>
-
-            {/* Center & Address */}
-            <div className="grid grid-cols-3 gap-2">
-              <div>
+              <div className="col-span-1">
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  관서/센터
+                  안전센터
                 </label>
                 <select
                   value={region}
@@ -169,20 +210,81 @@ export default function FireWaterEditModal({ fireWater, onClose, onSuccess }) {
                   <option value="정곡">정곡</option>
                 </select>
               </div>
-              <div className="col-span-2">
+            </div>
+
+            {/* Name Field */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                용수명 (시설명)
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="예: 부림농공단지 지상소화전"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500 outline-none"
+                disabled={isLoading}
+                required
+              />
+            </div>
+
+            {/* Town, Village & Address */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  위치 (주소)
+                  읍면동
                 </label>
                 <input
                   type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="예: 의령읍 의병로 123"
+                  value={town}
+                  onChange={(e) => setTown(e.target.value)}
+                  placeholder="예: 부림면"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500 outline-none"
                   disabled={isLoading}
-                  required
                 />
               </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  리
+                </label>
+                <input
+                  type="text"
+                  value={village}
+                  onChange={(e) => setVillage(e.target.value)}
+                  placeholder="예: 신반리"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500 outline-none"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  주변대상물
+                </label>
+                <input
+                  type="text"
+                  value={nearbyBuilding}
+                  onChange={(e) => setNearbyBuilding(e.target.value)}
+                  placeholder="예: 풀무원 식품 앞"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500 outline-none"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* Address */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                위치 (도로명/지번 주소)
+              </label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="예: 의령군 부림면 한지20길 40-21"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500 outline-none"
+                disabled={isLoading}
+                required
+              />
             </div>
 
             {/* Latitude and Longitude Grid */}
@@ -196,7 +298,7 @@ export default function FireWaterEditModal({ fireWater, onClose, onSuccess }) {
                   step="any"
                   value={latitude}
                   onChange={(e) => setLatitude(e.target.value)}
-                  placeholder="예: 35.3168"
+                  placeholder="예: 35.459673"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-red-500 focus:border-red-500 outline-none"
                   disabled={isLoading}
                 />
@@ -210,41 +312,84 @@ export default function FireWaterEditModal({ fireWater, onClose, onSuccess }) {
                   step="any"
                   value={longitude}
                   onChange={(e) => setLongitude(e.target.value)}
-                  placeholder="예: 128.2570"
+                  placeholder="예: 128.31503"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-red-500 focus:border-red-500 outline-none"
                   disabled={isLoading}
                 />
               </div>
             </div>
 
-            {/* Specs: Diameter and Install Date */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Specs: Diameter, Water Pressure, Signboard, Protective Frame */}
+            <div className="grid grid-cols-4 gap-2">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  구경 (Diameter, e.g. 100mm)
+                  관경(mm)
                 </label>
                 <input
                   type="text"
                   value={diameter}
                   onChange={(e) => setDiameter(e.target.value)}
-                  placeholder="예: 100"
+                  placeholder="150"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500 outline-none"
                   disabled={isLoading}
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  설치일자 (Install Date)
+                  수압(Mpa)
                 </label>
                 <input
                   type="text"
-                  value={installDate}
-                  onChange={(e) => setInstallDate(e.target.value)}
-                  placeholder="예: 2021-08-15"
+                  value={waterPressure}
+                  onChange={(e) => setWaterPressure(e.target.value)}
+                  placeholder="2.5"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500 outline-none"
                   disabled={isLoading}
                 />
               </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  표지판
+                </label>
+                <select
+                  value={signBoard}
+                  onChange={(e) => setSignBoard(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm outline-none"
+                  disabled={isLoading}
+                >
+                  <option value="○">○ (설치)</option>
+                  <option value="×">× (미설치)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  보호틀
+                </label>
+                <select
+                  value={protectiveFrame}
+                  onChange={(e) => setProtectiveFrame(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm outline-none"
+                  disabled={isLoading}
+                >
+                  <option value="○">○ (설치)</option>
+                  <option value="×">× (미설치)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Install Date */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                설치년도/일자
+              </label>
+              <input
+                type="text"
+                value={installDate}
+                onChange={(e) => setInstallDate(e.target.value)}
+                placeholder="예: 2000"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500 outline-none"
+                disabled={isLoading}
+              />
             </div>
 
             {/* Details */}
@@ -289,3 +434,4 @@ export default function FireWaterEditModal({ fireWater, onClose, onSuccess }) {
     </div>
   );
 }
+
