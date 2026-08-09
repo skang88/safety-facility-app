@@ -18,22 +18,32 @@ async function seedFireWaterData() {
     await mongoose.connect(mongoURI);
     console.log('MongoDB connected successfully.');
 
-    if (!fs.existsSync(refHtmlPath)) {
-      console.error(`HTML reference file not found at: ${refHtmlPath}`);
-      process.exit(1);
+    let masterItems = [];
+    if (fs.existsSync(refHtmlPath)) {
+      const htmlContent = fs.readFileSync(refHtmlPath, 'utf8');
+      const match = htmlContent.match(/window\.FIREWATER_DATA\s*=\s*(\{[\s\S]*?\});/);
+
+      if (!match) {
+        console.error('Failed to find window.FIREWATER_DATA in HTML file.');
+        process.exit(1);
+      }
+
+      const rawData = JSON.parse(match[1]);
+      masterItems = rawData.master || [];
+      console.log(`Extracted ${masterItems.length} records from HTML reference.`);
+    } else {
+      const backupJsonPath = path.join(__dirname, '../seedData/fireWaterGyeongnam.json');
+      if (fs.existsSync(backupJsonPath)) {
+        console.log(`HTML reference file not found. Falling back to JSON seed: ${backupJsonPath}`);
+        const rawJson = fs.readFileSync(backupJsonPath, 'utf8');
+        const parsed = JSON.parse(rawJson);
+        masterItems = Array.isArray(parsed) ? parsed : (parsed.master || []);
+        console.log(`Loaded ${masterItems.length} records from JSON seed.`);
+      } else {
+        console.error(`Neither HTML reference nor JSON seed data found.`);
+        process.exit(1);
+      }
     }
-
-    const htmlContent = fs.readFileSync(refHtmlPath, 'utf8');
-    const match = htmlContent.match(/window\.FIREWATER_DATA\s*=\s*(\{[\s\S]*?\});/);
-
-    if (!match) {
-      console.error('Failed to find window.FIREWATER_DATA in HTML file.');
-      process.exit(1);
-    }
-
-    const rawData = JSON.parse(match[1]);
-    const masterItems = rawData.master || [];
-    console.log(`Extracted ${masterItems.length} records from HTML reference.`);
 
     // Clear existing FireWater data
     await FireWater.deleteMany({});
