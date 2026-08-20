@@ -118,7 +118,7 @@ export default function GeojeTransportView() {
 
   // Ref to today's cell for auto-scrolling
   const todayRef = useRef(null);
-  const [hidePastDays, setHidePastDays] = useState(false);
+  const [displayRangeMode, setDisplayRangeMode] = useState('LAST_WEEK'); // Default: 지난주부터 표시 ('LAST_WEEK')
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -260,14 +260,19 @@ export default function GeojeTransportView() {
       });
     }
 
-    // If hidePastDays is true, filter out full weeks before August 16th (current week Sunday)
-    if (hidePastDays && year === 2026 && month === 8) {
-      // 2026-08-16 is current week's Sunday. Slice off the first 2 full rows (14 days)
-      days = days.filter((d, index) => index >= 14);
+    // Filter display range:
+    // LAST_WEEK: 지난주부터 표시 (8월 9일~). 지지난주 이전(1~8일) 7개 칸 잘라냄
+    // THIS_WEEK: 이번주부터 표시 (8월 16일~). 지지난주/지난주(1~15일) 14개 칸 잘라냄
+    if (year === 2026 && month === 8) {
+      if (displayRangeMode === 'LAST_WEEK') {
+        days = days.filter((d, index) => index >= 7);
+      } else if (displayRangeMode === 'THIS_WEEK') {
+        days = days.filter((d, index) => index >= 14);
+      }
     }
 
     return days;
-  }, [year, month, hidePastDays]);
+  }, [year, month, displayRangeMode]);
 
   // Open date details / registration modal
   const handleOpenDayModal = (dateStr) => {
@@ -615,22 +620,22 @@ export default function GeojeTransportView() {
         <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-4 shadow-xl mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
           
           {/* Month Navigation & Refresh */}
-          <div className="flex items-center space-x-3 flex-wrap gap-y-2">
+          <div className="flex items-center space-x-2 flex-wrap gap-y-2">
             <button
               onClick={handlePrevMonth}
-              className="p-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 transition border border-slate-600"
+              className="p-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 transition border border-slate-600"
               title="이전 달"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             
-            <h2 className="text-xl sm:text-2xl font-black text-white tracking-wide min-w-[160px] text-center">
+            <h2 className="text-lg sm:text-xl font-black text-white tracking-wide px-1">
               {year}년 {month}월
             </h2>
 
             <button
               onClick={handleNextMonth}
-              className="p-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 transition border border-slate-600"
+              className="p-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 transition border border-slate-600"
               title="다음 달"
             >
               <ChevronRight className="w-5 h-5" />
@@ -638,7 +643,7 @@ export default function GeojeTransportView() {
 
             <button
               onClick={handleToday}
-              className="px-3 py-2 rounded-xl bg-red-900/60 hover:bg-red-800 text-red-200 border border-red-700/50 text-xs font-bold transition ml-1"
+              className="px-3 py-2 rounded-xl bg-red-900/60 hover:bg-red-800 text-red-200 border border-red-700/50 text-xs font-bold transition"
             >
               오늘로 이동
             </button>
@@ -653,46 +658,41 @@ export default function GeojeTransportView() {
               실시간 새로고침
             </button>
 
-            {/* Past Days Toggle */}
-            <button
-              onClick={() => {
-                const nextVal = !hidePastDays;
-                setHidePastDays(nextVal);
-                showToast(nextVal ? '👁️ 지난 주 날짜(1일~15일)가 숨김 처리 되었습니다.' : '📅 전체 날짜(1일~31일)가 표시됩니다.');
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition flex items-center border ${
-                hidePastDays
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow'
-                  : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
-              }`}
-              title="지난 날짜(1일~15일) 숨기기 / 전체 날짜 보기"
-            >
-              {hidePastDays ? (
-                <>
-                  <EyeOff className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
-                  지난 날짜 숨김 (8/16~)
-                </>
-              ) : (
-                <>
-                  <Eye className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
-                  전체 날짜 표시 (1일~)
-                </>
-              )}
-            </button>
+            {/* Display Range Selector */}
+            <div className="flex items-center space-x-1.5 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-700 shadow-inner ml-2">
+              <CalendarIcon className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-xs font-extrabold text-slate-400">표시 범위:</span>
+              <select
+                value={displayRangeMode}
+                onChange={(e) => {
+                  setDisplayRangeMode(e.target.value);
+                  if (e.target.value === 'LAST_WEEK') showToast('📅 지난주(8월 9일~)부터 표시됩니다.');
+                  if (e.target.value === 'THIS_WEEK') showToast('📅 이번주(8월 16일~)부터 표시됩니다.');
+                  if (e.target.value === 'FULL') showToast('📅 전체 월(8월 1일~31일)이 표시됩니다.');
+                }}
+                className="bg-transparent text-xs font-black text-amber-300 outline-none cursor-pointer"
+              >
+                <option value="LAST_WEEK" className="bg-slate-900 text-white font-bold">지난주부터 보기 (8/9~)</option>
+                <option value="THIS_WEEK" className="bg-slate-900 text-white font-bold">이번주부터 보기 (8/16~)</option>
+                <option value="FULL" className="bg-slate-900 text-white font-bold">전체 달력 보기 (1일~31일)</option>
+              </select>
+            </div>
           </div>
 
           {/* Department Filter & Search */}
           <div className="flex items-center space-x-3 w-full md:w-auto">
-            <div className="relative flex-1 md:flex-initial">
-              <Filter className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+            {/* Department Selector */}
+            <div className="flex items-center space-x-2 bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl flex-1 md:flex-initial">
+              <Filter className="w-4 h-4 text-red-400" />
+              <span className="text-xs font-bold text-slate-300">부서 필터:</span>
               <select
                 value={selectedDeptFilter}
                 onChange={(e) => setSelectedDeptFilter(e.target.value)}
-                className="w-full md:w-48 pl-9 pr-8 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-bold text-slate-200 focus:ring-2 focus:ring-red-500 outline-none"
+                className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer"
               >
-                <option value="ALL">전체 부서 보기</option>
-                {DEPARTMENTS.filter(d => d !== '직접 입력').map(d => (
-                  <option key={d} value={d}>{d}</option>
+                <option value="ALL" className="bg-slate-900">전체 부서 보기</option>
+                {DEPARTMENTS.filter(d => d !== '직접 입력').map(dept => (
+                  <option key={dept} value={dept} className="bg-slate-900">{dept}</option>
                 ))}
               </select>
             </div>
