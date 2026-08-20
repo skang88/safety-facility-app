@@ -87,8 +87,11 @@ exports.upsertSlot = async (req, res) => {
 
     const targetArray = shiftType === 'departure' ? roster.departureTeam : roster.returnTeam;
     
-    // Find existing slot index
-    const existingIndex = targetArray.findIndex(s => s.slotIndex === Number(slotIndex));
+    // Find existing slot index with safe index fallback
+    const existingIndex = targetArray.findIndex((s, idx) => {
+      const idxVal = typeof s.slotIndex === 'number' ? s.slotIndex : idx;
+      return idxVal === Number(slotIndex);
+    });
 
     const slotData = {
       slotIndex: Number(slotIndex),
@@ -126,9 +129,15 @@ exports.cancelSlot = async (req, res) => {
     }
 
     if (shiftType === 'departure') {
-      roster.departureTeam = roster.departureTeam.filter(s => s.slotIndex !== Number(slotIndex));
+      roster.departureTeam = roster.departureTeam.filter((s, idx) => {
+        const idxVal = typeof s.slotIndex === 'number' ? s.slotIndex : idx;
+        return idxVal !== Number(slotIndex);
+      });
     } else if (shiftType === 'return') {
-      roster.returnTeam = roster.returnTeam.filter(s => s.slotIndex !== Number(slotIndex));
+      roster.returnTeam = roster.returnTeam.filter((s, idx) => {
+        const idxVal = typeof s.slotIndex === 'number' ? s.slotIndex : idx;
+        return idxVal !== Number(slotIndex);
+      });
     }
 
     await roster.save();

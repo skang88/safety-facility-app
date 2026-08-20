@@ -468,12 +468,18 @@ export default function GeojeTransportView() {
     let retTeam = [...(currentDay.returnTeam || [])];
 
     if (shiftType === 'departure') {
-      const existingIdx = depTeam.findIndex(s => s.slotIndex === slotIndex);
+      const existingIdx = depTeam.findIndex((s, idx) => {
+        const idxVal = typeof s.slotIndex === 'number' ? s.slotIndex : idx;
+        return idxVal === slotIndex;
+      });
       if (existingIdx >= 0) depTeam[existingIdx] = newSlot;
       else depTeam.push(newSlot);
       currentDay.departureTeam = depTeam;
     } else {
-      const existingIdx = retTeam.findIndex(s => s.slotIndex === slotIndex);
+      const existingIdx = retTeam.findIndex((s, idx) => {
+        const idxVal = typeof s.slotIndex === 'number' ? s.slotIndex : idx;
+        return idxVal === slotIndex;
+      });
       if (existingIdx >= 0) retTeam[existingIdx] = newSlot;
       else retTeam.push(newSlot);
       currentDay.returnTeam = retTeam;
@@ -516,9 +522,15 @@ export default function GeojeTransportView() {
     // 1. Instant Optimistic Local Update (0ms delay!)
     const currentDay = { ...selectedDayData };
     if (shiftType === 'departure') {
-      currentDay.departureTeam = (currentDay.departureTeam || []).filter(s => s.slotIndex !== slotIndex);
+      currentDay.departureTeam = (currentDay.departureTeam || []).filter((s, idx) => {
+        const idxVal = typeof s.slotIndex === 'number' ? s.slotIndex : idx;
+        return idxVal !== slotIndex;
+      });
     } else {
-      currentDay.returnTeam = (currentDay.returnTeam || []).filter(s => s.slotIndex !== slotIndex);
+      currentDay.returnTeam = (currentDay.returnTeam || []).filter((s, idx) => {
+        const idxVal = typeof s.slotIndex === 'number' ? s.slotIndex : idx;
+        return idxVal !== slotIndex;
+      });
     }
 
     setRosterMap(prev => ({
@@ -542,11 +554,30 @@ export default function GeojeTransportView() {
     }
   };
 
+  // Helper to safely find slot by slotIndex or array position fallback
+  const findSlotInTeam = (teamArray, slotIdx) => {
+    if (!Array.isArray(teamArray)) return null;
+    return teamArray.find((s, idx) => {
+      const idxVal = typeof s.slotIndex === 'number' ? s.slotIndex : idx;
+      return idxVal === slotIdx;
+    });
+  };
+
+  // Helper to get next available new slotIndex when adding extra slot
+  const getNextAvailableSlotIndex = (dayData) => {
+    const team = dayData?.departureTeam || [];
+    if (team.length === 0) return 0;
+    const validIndexes = team.map((s, idx) => typeof s.slotIndex === 'number' ? s.slotIndex : idx);
+    const maxIdx = Math.max(...validIndexes, -1);
+    return maxIdx + 1;
+  };
+
   // Calculate dynamic slot count for a day (default min 2, expands dynamically if extra slots exist or are added)
   const getDaySlotCount = (dayData) => {
     const team = dayData?.departureTeam || [];
     if (team.length === 0) return 2;
-    const maxIdx = Math.max(...team.map(s => s.slotIndex));
+    const validIndexes = team.map((s, idx) => typeof s.slotIndex === 'number' ? s.slotIndex : idx);
+    const maxIdx = Math.max(...validIndexes, 1);
     return Math.max(2, maxIdx + 1);
   };
 
@@ -930,7 +961,7 @@ export default function GeojeTransportView() {
                         </div>
                         <div className="space-y-1">
                           {Array.from({ length: slotCount }, (_, i) => i).map(slotIdx => {
-                            const slot = (dayData.departureTeam || []).find(s => s.slotIndex === slotIdx);
+                            const slot = findSlotInTeam(dayData.departureTeam, slotIdx);
                             return (
                               <div key={slotIdx} className="text-xs text-slate-200 truncate flex items-center justify-between">
                                 {slot ? (
@@ -1127,7 +1158,7 @@ export default function GeojeTransportView() {
                     <button
                       type="button"
                       onClick={() => {
-                        const nextSlotIdx = getDaySlotCount(selectedDayData);
+                        const nextSlotIdx = getNextAvailableSlotIndex(selectedDayData);
                         handleStartEditSlot('departure', nextSlotIdx, null);
                       }}
                       className="flex items-center px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-extrabold transition shadow"
@@ -1141,7 +1172,7 @@ export default function GeojeTransportView() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {Array.from({ length: getDaySlotCount(selectedDayData) }, (_, i) => i).map(slotIdx => {
-                    const slot = (selectedDayData.departureTeam || []).find(s => s.slotIndex === slotIdx);
+                    const slot = findSlotInTeam(selectedDayData.departureTeam, slotIdx);
                     return (
                       <div
                         key={slotIdx}
