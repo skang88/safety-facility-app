@@ -37,13 +37,11 @@ import {
 const API_BASE_URL = '/api/geoje-transport';
 
 const DEPARTMENTS = [
+  '미지정',
   '구조대',
   '의령센터',
   '부림센터',
   '정곡센터',
-  '현장대응단',
-  '소방행정과',
-  '예방안전과',
   '직접 입력'
 ];
 
@@ -60,29 +58,50 @@ const RANKS = [
   '직접 입력'
 ];
 
+// KST Date String Helper (YYYY-MM-DD in Asia/Seoul)
+const getKSTDateString = (d = new Date()) => {
+  const kst = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+  const yyyy = kst.getFullYear();
+  const mm = String(kst.getMonth() + 1).padStart(2, '0');
+  const dd = String(kst.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const getKSTDateObj = (d = new Date()) => {
+  return new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+};
+
+const TODAY_KST_STR = getKSTDateString();
+
 // Default empty dataset for initial layout rendering (no dummy sample names)
 const DEFAULT_SAMPLE_DATA = {
-  '2026-08-20': {
-    date: '2026-08-20',
-    departureTeamDepartment: '구조대',
+  [TODAY_KST_STR]: {
+    date: TODAY_KST_STR,
+    departureTeamDepartment: '미지정',
     departureTeam: [],
-    returnTeamDepartment: '의령센터',
+    returnTeamDepartment: '미지정',
     returnTeam: [],
     generalNotes: ''
   }
 };
 
 export default function GeojeTransportView() {
-  // Current view date state (Default to August 2026)
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 7, 20)); // Month is 0-indexed (7 = August)
+  // Current view date state (Default to KST Today)
+  const [currentDate, setCurrentDate] = useState(() => getKSTDateObj());
   const [rosterMap, setRosterMap] = useState({ ...DEFAULT_SAMPLE_DATA });
   const [loading, setLoading] = useState(false);
   const [selectedDateStr, setSelectedDateStr] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Today in KST
+  const todayStr = useMemo(() => getKSTDateString(), []);
+  const todayKST = useMemo(() => getKSTDateObj(), []);
+  const todayMonth = todayKST.getMonth() + 1;
+  const todayDay = todayKST.getDate();
+
   // Form states for adding/editing a volunteer slot
-  const [editingSlotInfo, setEditingSlotInfo] = useState(null); // { shiftType: 'departure'|'return', slotIndex: 0|1 }
-  const [formDept, setFormDept] = useState('구조대');
+  const [editingSlotInfo, setEditingSlotInfo] = useState(null);
+  const [formDept, setFormDept] = useState('미지정');
   const [formCustomDept, setFormCustomDept] = useState('');
   const [formRank, setFormRank] = useState('소방위');
   const [formCustomRank, setFormCustomRank] = useState('');
@@ -256,7 +275,7 @@ export default function GeojeTransportView() {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
   const handleToday = () => {
-    setCurrentDate(new Date(2026, 7, 20)); // Jump to current active date (2026-08-20)
+    setCurrentDate(getKSTDateObj());
     setTimeout(() => {
       if (todayRef.current) {
         todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -342,9 +361,9 @@ export default function GeojeTransportView() {
         ...prev,
         [dateStr]: {
           date: dateStr,
-          departureTeamDepartment: '구조대',
+          departureTeamDepartment: '미지정',
           departureTeam: [],
-          returnTeamDepartment: '의령센터',
+          returnTeamDepartment: '미지정',
           returnTeam: [],
           generalNotes: ''
         }
@@ -400,9 +419,9 @@ export default function GeojeTransportView() {
     if (!selectedDateStr) return null;
     return rosterMap[selectedDateStr] || {
       date: selectedDateStr,
-      departureTeamDepartment: '구조대',
+      departureTeamDepartment: '미지정',
       departureTeam: [],
-      returnTeamDepartment: '의령센터',
+      returnTeamDepartment: '미지정',
       returnTeam: [],
       generalNotes: ''
     };
@@ -412,11 +431,11 @@ export default function GeojeTransportView() {
   const handleStartEditSlot = (shiftType, slotIndex, existingSlot) => {
     setEditingSlotInfo({ shiftType, slotIndex });
     const targetDept = shiftType === 'departure'
-      ? (selectedDayData?.departureTeamDepartment || '구조대')
-      : (selectedDayData?.returnTeamDepartment || '의령센터');
+      ? (selectedDayData?.departureTeamDepartment || '미지정')
+      : (selectedDayData?.returnTeamDepartment || '미지정');
 
     setFormTeamDept(targetDept);
-    setFormDept(DEPARTMENTS.includes(targetDept) ? targetDept : '구조대');
+    setFormDept(DEPARTMENTS.includes(targetDept) ? targetDept : '미지정');
     setFormCustomDept(DEPARTMENTS.includes(targetDept) ? '' : targetDept);
     setFormRank('소방위');
     setFormCustomRank('');
@@ -523,6 +542,14 @@ export default function GeojeTransportView() {
     }
   };
 
+  // Calculate dynamic slot count for a day (default min 2, expands dynamically if extra slots exist or are added)
+  const getDaySlotCount = (dayData) => {
+    const team = dayData?.departureTeam || [];
+    if (team.length === 0) return 2;
+    const maxIdx = Math.max(...team.map(s => s.slotIndex));
+    return Math.max(2, maxIdx + 1);
+  };
+
   // Copy formatted roster string to clipboard (for KakaoTalk / SMS)
   const handleCopyFormattedText = (dayData) => {
     if (!dayData) return;
@@ -530,7 +557,7 @@ export default function GeojeTransportView() {
     const dayOfWeekStr = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
     const formattedDate = `${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일(${dayOfWeekStr})`;
 
-    const depDept = dayData.departureTeamDepartment || '구조대';
+    const depDept = dayData.departureTeamDepartment || '미지정';
     const depList = (dayData.departureTeam || [])
       .map(s => s.name)
       .join(', ') || '신청자 없음 (동원 가능)';
@@ -538,14 +565,14 @@ export default function GeojeTransportView() {
     const textToCopy = `[의령소방서 거제 폭우 현장동원 지정 현황]
 ■ 일자: ${formattedDate}
 ■ 담당: ${depDept}
-■ 동원 인원(2명): ${depList}
+■ 동원 인원(${depList.split(',').length}명): ${depList}
 ■ 비고: ${dayData.generalNotes || '의령 ↔ 거제 현장동원'}`;
 
     navigator.clipboard.writeText(textToCopy);
     showToast('📋 카카오톡/문자 전송용 보고서 양식이 복사되었습니다!');
   };
 
-  // Calculate monthly stats summary (2 slots per day total)
+  // Calculate monthly stats summary
   const statsSummary = useMemo(() => {
     let totalVolunteers = 0;
     let completedDays = 0;
@@ -553,9 +580,10 @@ export default function GeojeTransportView() {
 
     Object.values(rosterMap).forEach(day => {
       const depCount = (day.departureTeam || []).length;
+      const dayCapacity = getDaySlotCount(day);
       totalVolunteers += depCount;
-      if (depCount >= 2) completedDays++;
-      openSlotsCount += Math.max(0, 2 - depCount);
+      if (depCount >= dayCapacity && depCount > 0) completedDays++;
+      openSlotsCount += Math.max(0, dayCapacity - depCount);
     });
 
     return {
@@ -589,7 +617,7 @@ export default function GeojeTransportView() {
               </h1>
               <p className="text-xs sm:text-sm text-slate-300 mt-1 flex items-center gap-1.5 font-medium">
                 <Info className="w-4 h-4 text-red-400 shrink-0" />
-                <span>의령소방서 거제 폭우현장 2명 동원 지정 달력 (구조대 / 의령센터 / 부림센터 / 정곡센터)</span>
+                <span>의령소방서 거제 폭우현장 동원 지정 달력 (기본 2명, 가변 인원 추가 가능)</span>
               </p>
             </div>
           </div>
@@ -607,11 +635,11 @@ export default function GeojeTransportView() {
             </button>
 
             <button
-              onClick={() => handleOpenDayModal('2026-08-20')}
+              onClick={() => handleOpenDayModal(todayStr)}
               className="flex items-center px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold rounded-xl shadow-lg hover:shadow-red-600/30 transition border border-red-400/30 text-xs sm:text-sm shrink-0"
             >
               <UserPlus className="w-4 h-4 mr-2" />
-              오늘(8/20) 현장동원 신청
+              오늘({todayMonth}/{todayDay}) 현장동원 신청
             </button>
           </div>
         </div>
@@ -683,7 +711,7 @@ export default function GeojeTransportView() {
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-semibold">동원 완료된 일자 (2/2명)</p>
+              <p className="text-xs text-slate-400 font-semibold">동원 완료된 일자</p>
               <p className="text-xl font-black text-emerald-400 mt-0.5">{statsSummary.completedDays} <span className="text-xs text-slate-400 font-normal">일</span></p>
             </div>
           </div>
@@ -812,18 +840,19 @@ export default function GeojeTransportView() {
 
                 const dayData = rosterMap[cell.dateStr] || {
                   date: cell.dateStr,
-                  departureTeamDepartment: '구조대',
+                  departureTeamDepartment: '미지정',
                   departureTeam: [],
-                  returnTeamDepartment: '의령센터',
+                  returnTeamDepartment: '미지정',
                   returnTeam: []
                 };
 
+                const slotCount = getDaySlotCount(dayData);
                 const depCount = (dayData.departureTeam || []).length;
                 const totalCount = depCount;
-                const isComplete = totalCount >= 2;
+                const isComplete = totalCount >= slotCount;
 
-                const isToday = cell.dateStr === '2026-08-20';
-                const isPastDate = cell.dateStr && cell.dateStr < '2026-08-20';
+                const isToday = cell.dateStr === todayStr;
+                const isPastDate = cell.dateStr && cell.dateStr < todayStr;
                 const isSunday = cell.dayOfWeek === 0;
                 const isSaturday = cell.dayOfWeek === 6;
 
@@ -883,7 +912,7 @@ export default function GeojeTransportView() {
                                 ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' 
                                 : 'bg-slate-800 text-slate-400 border-slate-700'
                         }`}>
-                          {isPastDate ? (totalCount > 0 ? `종료 (${totalCount}/2)` : '동원 마감') : isComplete ? '완료 (2/2)' : `${totalCount}/2명 동원중`}
+                          {isPastDate ? (totalCount > 0 ? `종료 (${totalCount}/${slotCount})` : '동원 마감') : isComplete ? `완료 (${totalCount}/${slotCount})` : `${totalCount}/${slotCount}명 동원중`}
                         </span>
                       </div>
 
@@ -895,12 +924,12 @@ export default function GeojeTransportView() {
                           <span className={`text-[10px] font-black px-2 py-0.5 rounded border ${
                             isPastDate ? 'bg-slate-900 text-slate-500 border-slate-800' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
                           }`}>
-                            🏢 {dayData.departureTeamDepartment || '구조대'}
+                            🏢 {dayData.departureTeamDepartment || '미지정'}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-bold">정원 2명</span>
+                          <span className="text-[10px] text-slate-400 font-bold">정원 {slotCount}명</span>
                         </div>
                         <div className="space-y-1">
-                          {[0, 1].map(slotIdx => {
+                          {Array.from({ length: slotCount }, (_, i) => i).map(slotIdx => {
                             const slot = (dayData.departureTeam || []).find(s => s.slotIndex === slotIdx);
                             return (
                               <div key={slotIdx} className="text-xs text-slate-200 truncate flex items-center justify-between">
@@ -970,7 +999,7 @@ export default function GeojeTransportView() {
                       <div className="space-y-1 text-xs">
                         <div className="flex items-center space-x-2">
                           <span className="font-extrabold text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded border border-amber-500/30">
-                            담당: {dayData.departureTeamDepartment || '구조대'}
+                            담당: {dayData.departureTeamDepartment || '미지정'}
                           </span>
                           <span className="text-slate-300 font-bold">/ 인원: {depList}</span>
                         </div>
@@ -1033,7 +1062,7 @@ export default function GeojeTransportView() {
                 의령소방서 거제 현장동원 보고 문자 양식 Preview:
               </p>
               <div className="bg-slate-950 p-3 rounded-xl font-mono text-slate-300 text-[11px] leading-relaxed border border-slate-800 select-all">
-                {`${selectedDateStr.split('-')[1]}/${selectedDateStr.split('-')[2]} 현장동원 담당: ${selectedDayData.departureTeamDepartment || '구조대'} / 인원: ${(selectedDayData.departureTeam || []).map(s => s.name).join(', ') || '동원가능'}`}
+                {`${selectedDateStr.split('-')[1]}/${selectedDateStr.split('-')[2]} 현장동원 담당: ${selectedDayData.departureTeamDepartment || '미지정'} / 인원: ${(selectedDayData.departureTeam || []).map(s => s.name).join(', ') || '동원가능'}`}
               </div>
             </div>
 
@@ -1049,12 +1078,12 @@ export default function GeojeTransportView() {
                     {!isEditingDepDept ? (
                       <div className="flex items-center space-x-2">
                         <span className="text-xs font-black text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/30">
-                          담당 센터/부서: [{selectedDayData.departureTeamDepartment || '구조대'}]
+                          담당 센터/부서: [{selectedDayData.departureTeamDepartment || '미지정'}]
                         </span>
                         <button
                           type="button"
                           onClick={() => {
-                            setInlineDepDept(selectedDayData.departureTeamDepartment || '구조대');
+                            setInlineDepDept(selectedDayData.departureTeamDepartment || '미지정');
                             setIsEditingDepDept(true);
                           }}
                           className="text-xs text-amber-400 hover:text-amber-200 underline font-bold"
@@ -1090,11 +1119,28 @@ export default function GeojeTransportView() {
                       </div>
                     )}
                   </div>
-                  <span className="text-xs text-slate-400 font-bold bg-slate-900 px-2.5 py-1 rounded-md border border-slate-700">정원 2명</span>
+                  
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-slate-400 font-bold bg-slate-900 px-2.5 py-1 rounded-md border border-slate-700">
+                      정원 {getDaySlotCount(selectedDayData)}명
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextSlotIdx = getDaySlotCount(selectedDayData);
+                        handleStartEditSlot('departure', nextSlotIdx, null);
+                      }}
+                      className="flex items-center px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-extrabold transition shadow"
+                      title="동원 인원 증원 (새 자리 추가)"
+                    >
+                      <UserPlus className="w-3.5 h-3.5 mr-1" />
+                      + 인원 추가 (슬롯 증원)
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {[0, 1].map(slotIdx => {
+                  {Array.from({ length: getDaySlotCount(selectedDayData) }, (_, i) => i).map(slotIdx => {
                     const slot = (selectedDayData.departureTeam || []).find(s => s.slotIndex === slotIdx);
                     return (
                       <div
@@ -1147,7 +1193,6 @@ export default function GeojeTransportView() {
                   })}
                 </div>
               </div>
-
             </div>
 
             {/* INLINE EDIT / SIGN-UP FORM */}
