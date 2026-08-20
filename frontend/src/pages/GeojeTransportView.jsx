@@ -589,7 +589,7 @@ export default function GeojeTransportView() {
 
       {/* KPI Overview Summary Dashboard Cards */}
       <section className="max-w-7xl mx-auto px-4 sm:px-8 mt-6 w-full">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-slate-800/80 backdrop-blur border border-slate-700/70 rounded-2xl p-4 shadow-lg flex items-center space-x-3">
             <div className="p-3 bg-red-500/10 text-red-400 rounded-xl border border-red-500/20">
               <CalendarCheck className="w-6 h-6" />
@@ -605,7 +605,7 @@ export default function GeojeTransportView() {
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-semibold">완료된 일자 (4/4명)</p>
+              <p className="text-xs text-slate-400 font-semibold">모집 완료된 일자 (4/4명)</p>
               <p className="text-xl font-black text-emerald-400 mt-0.5">{statsSummary.completedDays} <span className="text-xs text-slate-400 font-normal">일</span></p>
             </div>
           </div>
@@ -617,16 +617,6 @@ export default function GeojeTransportView() {
             <div>
               <p className="text-xs text-slate-400 font-semibold">현재 모집 잔여 석</p>
               <p className="text-xl font-black text-amber-400 mt-0.5">{statsSummary.openSlotsCount} <span className="text-xs text-slate-400 font-normal">자리에 지원 가능</span></p>
-            </div>
-          </div>
-
-          <div className="bg-slate-800/80 backdrop-blur border border-slate-700/70 rounded-2xl p-4 shadow-lg flex items-center space-x-3">
-            <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
-              <Building className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-400 font-semibold">최다 참여 소속부서</p>
-              <p className="text-sm font-extrabold text-blue-300 mt-1 truncate max-w-[140px]">{statsSummary.topDept}</p>
             </div>
           </div>
         </div>
