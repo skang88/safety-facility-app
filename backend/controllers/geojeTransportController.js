@@ -3,57 +3,7 @@ const GeojeTransport = require('../models/GeojeTransport');
 let isSeeded = false;
 
 const seedInitialDataIfNeeded = async () => {
-  if (isSeeded) return;
-  try {
-    const count = await GeojeTransport.countDocuments();
-    if (count === 0) {
-      const sampleEntries = [
-        {
-          date: '2026-08-20',
-          departureTeamDepartment: '현장대응단',
-          departureTeam: [
-            { slotIndex: 0, department: '현장대응단', rank: '소방위', name: '김태호', phone: '010-1234-5678', note: '지휘차 탑승' },
-            { slotIndex: 1, department: '현장대응단', rank: '소방장', name: '박성민', phone: '010-2345-6789', note: '' }
-          ],
-          returnTeamDepartment: '소방행정과',
-          returnTeam: [
-            { slotIndex: 0, department: '소방행정과', rank: '소방위', name: '이수진', phone: '010-3456-7890', note: '업무 지원' },
-            { slotIndex: 1, department: '소방행정과', rank: '소방장', name: '최동현', phone: '010-4567-8901', note: '' }
-          ],
-          generalNotes: '폭우 대비 현장 인력 수송 비상 편성 (거제소방서 본서 출발)'
-        },
-        {
-          date: '2026-08-21',
-          departureTeamDepartment: '옥포119안전센터',
-          departureTeam: [
-            { slotIndex: 0, department: '옥포119안전센터', rank: '소방경', name: '정해성', phone: '010-5678-9012', note: '' },
-            { slotIndex: 1, department: '옥포119안전센터', rank: '소방교', name: '한지민', phone: '010-6789-0123', note: '' }
-          ],
-          returnTeamDepartment: '고현119안전센터',
-          returnTeam: [
-            { slotIndex: 0, department: '고현119안전센터', rank: '소방위', name: '강민우', phone: '010-7890-1234', note: '' }
-          ],
-          generalNotes: '저녁 복귀조 1명 추가 모집 중'
-        },
-        {
-          date: '2026-08-22',
-          departureTeamDepartment: '119재난대응과',
-          departureTeam: [
-            { slotIndex: 0, department: '119재난대응과', rank: '소방위', name: '윤서준', phone: '010-8901-2345', note: '' }
-          ],
-          returnTeamDepartment: '예방안전과',
-          returnTeam: [],
-          generalNotes: '주말 폭우 지원 인력 모집 중'
-        }
-      ];
-
-      await GeojeTransport.insertMany(sampleEntries);
-      console.log('Geoje Transport sample data seeded successfully');
-    }
-    isSeeded = true;
-  } catch (err) {
-    console.error('Error seeding Geoje transport data:', err);
-  }
+  isSeeded = true;
 };
 
 // Get monthly transport rosters (ultra-fast lean query)

@@ -30,9 +30,7 @@ import {
   Database
 } from 'lucide-react';
 
-const API_BASE_URL = typeof window !== 'undefined' && window.location.hostname 
-  ? `http://${window.location.hostname}:5000/api/geoje-transport` 
-  : 'http://localhost:5000/api/geoje-transport';
+const API_BASE_URL = '/api/geoje-transport';
 
 const DEPARTMENTS = [
   '현장대응단',
@@ -62,44 +60,15 @@ const RANKS = [
   '직접 입력'
 ];
 
-// Initial mock dataset for local fallback & rich immediate display
+// Default empty dataset for initial layout rendering (no dummy sample names)
 const DEFAULT_SAMPLE_DATA = {
   '2026-08-20': {
     date: '2026-08-20',
     departureTeamDepartment: '현장대응단',
-    departureTeam: [
-      { slotIndex: 0, department: '현장대응단', rank: '소방위', name: '홍길동', phone: '010-1234-5678', note: '지휘차 탑승' },
-      { slotIndex: 1, department: '현장대응단', rank: '소방장', name: '김철수', phone: '010-2345-6789', note: '수송 운전' }
-    ],
+    departureTeam: [],
     returnTeamDepartment: '소방행정과',
-    returnTeam: [
-      { slotIndex: 0, department: '소방행정과', rank: '소방위', name: '이영희', phone: '010-3456-7890', note: '업무 지원' },
-      { slotIndex: 1, department: '소방행정과', rank: '소방장', name: '박민수', phone: '010-4567-8901', note: '장비 교환' }
-    ],
-    generalNotes: '폭우 대비 본서 06:00 출발 현장 지원'
-  },
-  '2026-08-21': {
-    date: '2026-08-21',
-    departureTeamDepartment: '옥포119안전센터',
-    departureTeam: [
-      { slotIndex: 0, department: '옥포119안전센터', rank: '소방경', name: '정해성', phone: '010-5678-9012', note: '' },
-      { slotIndex: 1, department: '옥포119안전센터', rank: '소방교', name: '한지민', phone: '010-6789-0123', note: '' }
-    ],
-    returnTeamDepartment: '고현119안전센터',
-    returnTeam: [
-      { slotIndex: 0, department: '고현119안전센터', rank: '소방위', name: '강민우', phone: '010-7890-1234', note: '' }
-    ],
-    generalNotes: '저녁 복귀조 1명 추가 신청 받는 중'
-  },
-  '2026-08-22': {
-    date: '2026-08-22',
-    departureTeamDepartment: '119재난대응과',
-    departureTeam: [
-      { slotIndex: 0, department: '119재난대응과', rank: '소방위', name: '윤서준', phone: '010-8901-2345', note: '' }
-    ],
-    returnTeamDepartment: '예방안전과',
     returnTeam: [],
-    generalNotes: '주말 비상 수송지원 지원자 수시 모집'
+    generalNotes: ''
   }
 };
 
@@ -336,29 +305,12 @@ export default function GeojeTransportView() {
 
   // Start slot registration / edit
   const handleStartEditSlot = (shiftType, slotIndex, existingSlot) => {
-    const defaultTeamDept = shiftType === 'departure' 
-      ? (selectedDayData?.departureTeamDepartment || '현장대응단') 
-      : (selectedDayData?.returnTeamDepartment || '소방행정과');
-
     setEditingSlotInfo({ shiftType, slotIndex });
-    setFormTeamDept(defaultTeamDept);
     if (existingSlot) {
-      const isCustomDept = !DEPARTMENTS.includes(existingSlot.department) || existingSlot.department === '직접 입력';
-      setFormDept(isCustomDept ? '직접 입력' : existingSlot.department);
-      setFormCustomDept(isCustomDept ? existingSlot.department : '');
-
-      const isCustomRank = !RANKS.includes(existingSlot.rank) || existingSlot.rank === '직접 입력';
-      setFormRank(isCustomRank ? '직접 입력' : existingSlot.rank);
-      setFormCustomRank(isCustomRank ? existingSlot.rank : '');
-
       setFormName(existingSlot.name || '');
       setFormPhone(existingSlot.phone || '');
       setFormNote(existingSlot.note || '');
     } else {
-      setFormDept(defaultTeamDept);
-      setFormCustomDept('');
-      setFormRank('소방경');
-      setFormCustomRank('');
       setFormName('');
       setFormPhone('');
       setFormNote('');
@@ -370,9 +322,6 @@ export default function GeojeTransportView() {
     e.preventDefault();
     if (!editingSlotInfo || !selectedDateStr) return;
 
-    const finalDept = formDept === '직접 입력' ? formCustomDept : formDept;
-    const finalRank = formRank === '직접 입력' ? formCustomRank : formRank;
-
     if (!formName.trim()) {
       alert('성명을 입력해 주세요.');
       return;
@@ -381,8 +330,6 @@ export default function GeojeTransportView() {
     const { shiftType, slotIndex } = editingSlotInfo;
     const newSlot = {
       slotIndex,
-      department: finalDept || formTeamDept || '거제소방서',
-      rank: finalRank || '소방위',
       name: formName.trim(),
       phone: formPhone.trim(),
       note: formNote.trim()
@@ -394,13 +341,11 @@ export default function GeojeTransportView() {
     let retTeam = [...(currentDay.returnTeam || [])];
 
     if (shiftType === 'departure') {
-      currentDay.departureTeamDepartment = formTeamDept || currentDay.departureTeamDepartment || '현장대응단';
       const existingIdx = depTeam.findIndex(s => s.slotIndex === slotIndex);
       if (existingIdx >= 0) depTeam[existingIdx] = newSlot;
       else depTeam.push(newSlot);
       currentDay.departureTeam = depTeam;
     } else {
-      currentDay.returnTeamDepartment = formTeamDept || currentDay.returnTeamDepartment || '소방행정과';
       const existingIdx = retTeam.findIndex(s => s.slotIndex === slotIndex);
       if (existingIdx >= 0) retTeam[existingIdx] = newSlot;
       else retTeam.push(newSlot);
@@ -412,19 +357,16 @@ export default function GeojeTransportView() {
       [selectedDateStr]: currentDay
     }));
     setEditingSlotInfo(null);
-    showToast('⚡ 신청이 즉시 등록되었습니다! (DB 동기화 진행중...)');
+    showToast('⚡ 자원 신청이 즉시 완료되었습니다!');
 
     // 2. Background DB Async Save
     try {
       const response = await axios.post(`${API_BASE_URL}/slot/${selectedDateStr}`, {
         shiftType,
         slotIndex,
-        department: newSlot.department,
-        rank: newSlot.rank,
         name: newSlot.name,
         phone: newSlot.phone,
-        note: newSlot.note,
-        teamDepartment: formTeamDept
+        note: newSlot.note
       });
 
       if (response.data && response.data.success && response.data.data) {
@@ -433,7 +375,7 @@ export default function GeojeTransportView() {
           ...prev,
           [selectedDateStr]: dbUpdatedRoster
         }));
-        showToast('✨ DB 저장 완료! 전체 사용자에게 실시간 공유됩니다.');
+        showToast('✨ DB 저장 완료! 전체 사용자에게 공유되었습니다.');
       }
     } catch (err) {
       console.warn('Backend API save slot warning:', err);
@@ -482,12 +424,12 @@ export default function GeojeTransportView() {
 
     const depDept = dayData.departureTeamDepartment || '현장대응단';
     const depList = (dayData.departureTeam || [])
-      .map(s => `${s.rank} ${s.name}`)
+      .map(s => s.name)
       .join(', ') || '신청자 없음 (모집중)';
 
     const retDept = dayData.returnTeamDepartment || '소방행정과';
     const retList = (dayData.returnTeam || [])
-      .map(s => `${s.rank} ${s.name}`)
+      .map(s => s.name)
       .join(', ') || '신청자 없음 (모집중)';
 
     const textToCopy = `[거제소방서 폭우현장 인력수송 지원]
@@ -839,7 +781,6 @@ export default function GeojeTransportView() {
                               <div key={slotIdx} className="text-[11px] text-slate-200 truncate flex items-center justify-between">
                                 {slot ? (
                                   <span className="font-bold text-slate-100">
-                                    <span className="text-slate-400 font-normal mr-1">{slot.rank}</span>
                                     {slot.name}
                                   </span>
                                 ) : (
@@ -868,7 +809,6 @@ export default function GeojeTransportView() {
                               <div key={slotIdx} className="text-[11px] text-slate-200 truncate flex items-center justify-between">
                                 {slot ? (
                                   <span className="font-bold text-slate-100">
-                                    <span className="text-slate-400 font-normal mr-1">{slot.rank}</span>
                                     {slot.name}
                                   </span>
                                 ) : (
@@ -917,8 +857,8 @@ export default function GeojeTransportView() {
                 const dateObj = new Date(dateKey);
                 const dayOfWeekStr = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
 
-                const depList = (dayData.departureTeam || []).map(s => `${s.rank} ${s.name}`).join(', ') || '미정 (신청 가능)';
-                const retList = (dayData.returnTeam || []).map(s => `${s.rank} ${s.name}`).join(', ') || '미정 (신청 가능)';
+                const depList = (dayData.departureTeam || []).map(s => s.name).join(', ') || '미정 (신청 가능)';
+                const retList = (dayData.returnTeam || []).map(s => s.name).join(', ') || '미정 (신청 가능)';
 
                 return (
                   <div key={dateKey} className="p-4 bg-slate-900/60 hover:bg-slate-900 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -1004,7 +944,7 @@ export default function GeojeTransportView() {
                 현장 지원 보고 문자 양식 Preview:
               </p>
               <div className="bg-slate-950 p-3 rounded-xl font-mono text-slate-300 text-[11px] leading-relaxed border border-slate-800 select-all">
-                {`${selectedDateStr.split('-')[1]}/${selectedDateStr.split('-')[2]} 출발 담당 ${selectedDayData.departureTeamDepartment || '현장대응단'} / 인원 ${(selectedDayData.departureTeam || []).map(s => `${s.rank} ${s.name}`).join(', ') || '신청가능'} / 복귀 담당 ${selectedDayData.returnTeamDepartment || '소방행정과'} / 인원 ${(selectedDayData.returnTeam || []).map(s => `${s.rank} ${s.name}`).join(', ') || '신청가능'}`}
+                {`${selectedDateStr.split('-')[1]}/${selectedDateStr.split('-')[2]} 출발 담당 ${selectedDayData.departureTeamDepartment || '현장대응단'} / 인원 ${(selectedDayData.departureTeam || []).map(s => s.name).join(', ') || '신청가능'} / 복귀 담당 ${selectedDayData.returnTeamDepartment || '소방행정과'} / 인원 ${(selectedDayData.returnTeam || []).map(s => s.name).join(', ') || '신청가능'}`}
               </div>
             </div>
 
@@ -1077,11 +1017,8 @@ export default function GeojeTransportView() {
                       >
                         {slot ? (
                           <div className="space-y-0.5">
-                            <span className="text-[10px] bg-slate-800 text-slate-300 font-bold px-2 py-0.5 rounded">
-                              {slot.department}
-                            </span>
-                            <p className="text-sm font-black text-white mt-1">
-                              {slot.rank} {slot.name}
+                            <p className="text-base font-black text-white">
+                              {slot.name}
                             </p>
                             {slot.phone && <p className="text-[10px] text-slate-400 flex items-center"><Phone className="w-3 h-3 mr-1" />{slot.phone}</p>}
                             {slot.note && <p className="text-[10px] text-amber-300">비고: {slot.note}</p>}
@@ -1187,11 +1124,8 @@ export default function GeojeTransportView() {
                       >
                         {slot ? (
                           <div className="space-y-0.5">
-                            <span className="text-[10px] bg-slate-800 text-slate-300 font-bold px-2 py-0.5 rounded">
-                              {slot.department}
-                            </span>
-                            <p className="text-sm font-black text-white mt-1">
-                              {slot.rank} {slot.name}
+                            <p className="text-base font-black text-white">
+                              {slot.name}
                             </p>
                             {slot.phone && <p className="text-[10px] text-slate-400 flex items-center"><Phone className="w-3 h-3 mr-1" />{slot.phone}</p>}
                             {slot.note && <p className="text-[10px] text-blue-300">비고: {slot.note}</p>}
@@ -1239,7 +1173,7 @@ export default function GeojeTransportView() {
                 <div className="flex items-center justify-between pb-2 border-b border-slate-700">
                   <h4 className="text-sm font-black text-white flex items-center">
                     <UserPlus className="w-4 h-4 mr-2 text-red-400" />
-                    {editingSlotInfo.shiftType === 'departure' ? '아침 06시 출발조' : '저녁 18시 복귀조'} - 자원 신청 등록
+                    {editingSlotInfo.shiftType === 'departure' ? '아침 06시 출발조' : '저녁 18시 복귀조'} - 자원 신청
                   </h4>
                   <button
                     type="button"
@@ -1250,80 +1184,24 @@ export default function GeojeTransportView() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  
-                  {/* Shift Main Team Dept */}
-                  <div>
-                    <label className="block text-slate-300 font-bold mb-1">
-                      {editingSlotInfo.shiftType === 'departure' ? '출발 담당 부서명' : '복귀 담당 부서명'}
-                    </label>
-                    <input
-                      type="text"
-                      value={formTeamDept}
-                      onChange={(e) => setFormTeamDept(e.target.value)}
-                      placeholder="예: 현장대응단, 소방행정과"
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-red-500 outline-none"
-                    />
-                  </div>
-
-                  {/* Personal Department */}
-                  <div>
-                    <label className="block text-slate-300 font-bold mb-1">신청자 소속 부서</label>
-                    <select
-                      value={formDept}
-                      onChange={(e) => setFormDept(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-red-500 outline-none"
-                    >
-                      {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                    {formDept === '직접 입력' && (
-                      <input
-                        type="text"
-                        value={formCustomDept}
-                        onChange={(e) => setFormCustomDept(e.target.value)}
-                        placeholder="부서명 직접 입력"
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white mt-1 outline-none"
-                      />
-                    )}
-                  </div>
-
-                  {/* Rank */}
-                  <div>
-                    <label className="block text-slate-300 font-bold mb-1">계급 (직위)</label>
-                    <select
-                      value={formRank}
-                      onChange={(e) => setFormRank(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-red-500 outline-none"
-                    >
-                      {RANKS.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                    {formRank === '직접 입력' && (
-                      <input
-                        type="text"
-                        value={formCustomRank}
-                        onChange={(e) => setFormCustomRank(e.target.value)}
-                        placeholder="계급 직접 입력"
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white mt-1 outline-none"
-                      />
-                    )}
-                  </div>
-
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                   {/* Name */}
                   <div>
                     <label className="block text-slate-300 font-bold mb-1">성명 <span className="text-red-400">*</span></label>
                     <input
                       type="text"
                       required
+                      autoFocus
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
-                      placeholder="예: 홍길동"
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-red-500 outline-none font-bold"
+                      placeholder="성명 입력 (예: 홍길동)"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-red-500 outline-none font-bold text-sm"
                     />
                   </div>
 
                   {/* Phone */}
                   <div>
-                    <label className="block text-slate-300 font-bold mb-1">비상 연락처 (선택)</label>
+                    <label className="block text-slate-300 font-bold mb-1">연락처 (선택)</label>
                     <input
                       type="text"
                       value={formPhone}
@@ -1335,16 +1213,15 @@ export default function GeojeTransportView() {
 
                   {/* Note */}
                   <div>
-                    <label className="block text-slate-300 font-bold mb-1">비고 (지원차량 / 요청사항)</label>
+                    <label className="block text-slate-300 font-bold mb-1">비고 (선택)</label>
                     <input
                       type="text"
                       value={formNote}
                       onChange={(e) => setFormNote(e.target.value)}
-                      placeholder="예: 승용차 지원 가능, 장비 지참"
+                      placeholder="예: 승용차 지원"
                       className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none"
                     />
                   </div>
-
                 </div>
 
                 <div className="flex items-center justify-end space-x-2 pt-2">
