@@ -118,47 +118,54 @@ export default function GeojeTransportView() {
 
   // Ref to today's cell for auto-scrolling
   const todayRef = useRef(null);
-  const [displayRangeMode, setDisplayRangeMode] = useState('LAST_WEEK'); // Default: 지난주부터 표시 ('LAST_WEEK')
+  const [displayRangeMode, setDisplayRangeMode] = useState('THIS_WEEK'); // Default: 이번주부터 보기 ('THIS_WEEK')
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  // Fetch monthly rosters directly from MongoDB API
+  // Fetch rosters for current month and next month seamlessly
   const fetchMonthlyRosters = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
-    try {
-      const response = await axios.get(`${API_BASE_URL}/monthly?year=${year}&month=${month}`);
-      if (response.data && response.data.success && Array.isArray(response.data.data)) {
-        const apiMap = {};
-        // Fill sample default structure if database is new
-        Object.keys(DEFAULT_SAMPLE_DATA).forEach(k => {
-          if (k.startsWith(`${year}-${String(month).padStart(2, '0')}`)) {
-            apiMap[k] = DEFAULT_SAMPLE_DATA[k];
-          }
-        });
+    const nextYear = month === 12 ? year + 1 : year;
+    const nextMonth = month === 12 ? 1 : month + 1;
 
-        // Overlay MongoDB database entries
-        response.data.data.forEach(item => {
+    try {
+      const [resCurrent, resNext] = await Promise.all([
+        axios.get(`${API_BASE_URL}/monthly?year=${year}&month=${month}`),
+        axios.get(`${API_BASE_URL}/monthly?year=${nextYear}&month=${nextMonth}`)
+      ]);
+
+      const apiMap = {};
+      
+      // Default initial fallback
+      Object.keys(DEFAULT_SAMPLE_DATA).forEach(k => {
+        apiMap[k] = DEFAULT_SAMPLE_DATA[k];
+      });
+
+      if (resCurrent.data && resCurrent.data.success && Array.isArray(resCurrent.data.data)) {
+        resCurrent.data.data.forEach(item => {
           apiMap[item.date] = item;
         });
+      }
+      if (resNext.data && resNext.data.success && Array.isArray(resNext.data.data)) {
+        resNext.data.data.forEach(item => {
+          apiMap[item.date] = item;
+        });
+      }
 
-        setRosterMap(apiMap);
-        localStorage.setItem(`geoje_transport_roster_${year}_${month}`, JSON.stringify(apiMap));
-        
-        if (!isSilent) {
-          showToast('🔄 MongoDB 데이터베이스 실시간 연동 및 명단 새로고침 완료!');
-        }
+      setRosterMap(apiMap);
+      localStorage.setItem(`geoje_transport_roster_${year}_${month}`, JSON.stringify(apiMap));
+      
+      if (!isSilent) {
+        showToast('🔄 MongoDB 데이터베이스 실시간 연동 및 명단 새로고침 완료!');
       }
     } catch (err) {
-      console.warn('Backend DB connection failed, using cached local data:', err);
+      console.warn('Backend DB connection warning:', err);
       const localDataStr = localStorage.getItem(`geoje_transport_roster_${year}_${month}`);
       let initialRosters = localDataStr ? JSON.parse(localDataStr) : { ...DEFAULT_SAMPLE_DATA };
       setRosterMap(initialRosters);
-      if (!isSilent) {
-        showToast('⚠️ DB 서버 접속 대기 중 (오프라인 로컬 저장소 사용)');
-      }
     } finally {
       if (!isSilent) setLoading(false);
     }
@@ -219,7 +226,7 @@ export default function GeojeTransportView() {
     }, 150);
   };
 
-  // Days matrix for calendar
+  // Days matrix for calendar (defaults to THIS_WEEK and includes seamless next month dates)
   const calendarDays = useMemo(() => {
     const firstDayOfMonth = new Date(year, month - 1, 1);
     const lastDayOfMonth = new Date(year, month, 0);
@@ -235,39 +242,51 @@ export default function GeojeTransportView() {
       days.push({
         dayNum: prevMonthLastDay - i,
         isCurrentMonth: false,
+        isPrevMonth: true,
         dateStr: null
       });
     }
 
-    // Days in current month
+    // Days in current month (August)
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = formatDateStr(year, month, d);
       days.push({
         dayNum: d,
         isCurrentMonth: true,
+        monthNum: month,
         dateStr,
         dayOfWeek: new Date(year, month - 1, d).getDay()
       });
     }
 
-    // Padding days for next month to complete grid (multiples of 7)
-    const remainingSlots = 42 - days.length; // 6 rows of 7
-    for (let i = 1; i <= (remainingSlots < 7 ? remainingSlots : remainingSlots - 7); i++) {
+    // Next Month (September) seamless days generation (2 full weeks of next month: 14 days)
+    const nextYear = month === 12 ? year + 1 : year;
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const currentLength = days.length;
+    const endRowPadding = (7 - (currentLength % 7)) % 7;
+    const totalNextDaysToAdd = endRowPadding + 7; // Add remaining of current week + 1 full next week (Sept 1 ~ Sept 13)
+
+    for (let i = 1; i <= totalNextDaysToAdd; i++) {
+      const nextDateStr = formatDateStr(nextYear, nextMonth, i);
+      const nextDayOfWeek = new Date(nextYear, nextMonth - 1, i).getDay();
       days.push({
         dayNum: i,
         isCurrentMonth: false,
-        dateStr: null
+        isNextMonth: true,
+        monthNum: nextMonth,
+        dateStr: nextDateStr,
+        dayOfWeek: nextDayOfWeek
       });
     }
 
     // Filter display range:
-    // LAST_WEEK: 지난주부터 표시 (8월 9일 일요일~). index >= 14
-    // THIS_WEEK: 이번주부터 표시 (8월 16일 일요일~). index >= 21
+    // THIS_WEEK (Default: 이번주부터 표시 8월 16일 일요일~). index >= 21
+    // LAST_WEEK (지난주부터 표시 8월 9일 일요일~). index >= 14
     if (year === 2026 && month === 8) {
-      if (displayRangeMode === 'LAST_WEEK') {
-        days = days.filter((d, index) => index >= 14);
-      } else if (displayRangeMode === 'THIS_WEEK') {
+      if (displayRangeMode === 'THIS_WEEK') {
         days = days.filter((d, index) => index >= 21);
+      } else if (displayRangeMode === 'LAST_WEEK') {
+        days = days.filter((d, index) => index >= 14);
       }
     }
 
@@ -744,7 +763,7 @@ export default function GeojeTransportView() {
             {/* Calendar Day Cells */}
             <div className="grid grid-cols-7 auto-rows-fr gap-px bg-slate-700/50">
               {calendarDays.map((cell, idx) => {
-                if (!cell.isCurrentMonth) {
+                if (!cell.dateStr) {
                   return (
                     <div key={idx} className="bg-slate-900/40 p-2 min-h-[140px] text-slate-600 select-none">
                       <span className="text-xs font-bold">{cell.dayNum}</span>
@@ -792,9 +811,11 @@ export default function GeojeTransportView() {
                     className={`p-2.5 min-h-[150px] transition-all cursor-pointer flex flex-col justify-between group relative border ${
                       isToday 
                         ? 'ring-2 ring-red-500 bg-red-950/30 border-red-500/60 shadow-lg' 
-                        : isPastDate 
-                          ? 'bg-slate-950/60 text-slate-500 opacity-60 border-slate-850 hover:bg-slate-900/80'
-                          : 'bg-slate-900 hover:bg-slate-800 border-slate-800/80 hover:border-slate-600'
+                        : cell.isNextMonth
+                          ? 'bg-slate-900/95 hover:bg-slate-800 border-purple-500/30 hover:border-purple-400'
+                          : isPastDate 
+                            ? 'bg-slate-950/60 text-slate-500 opacity-60 border-slate-850 hover:bg-slate-900/80'
+                            : 'bg-slate-900 hover:bg-slate-800 border-slate-800/80 hover:border-slate-600'
                     }`}
                   >
                     {/* Top Row: Date Number & Badge Status */}
@@ -803,15 +824,17 @@ export default function GeojeTransportView() {
                         <span className={`text-sm font-black rounded-lg px-2 py-0.5 ${
                           isToday 
                             ? 'bg-red-600 text-white shadow' 
-                            : isPastDate
-                              ? 'text-slate-500 font-bold'
-                              : isSunday 
-                                ? 'text-red-400 font-bold' 
-                                : isSaturday 
-                                  ? 'text-blue-400 font-bold' 
-                                  : 'text-slate-200'
+                            : cell.isNextMonth
+                              ? 'bg-purple-900/80 text-purple-200 border border-purple-500/50 shadow font-black'
+                              : isPastDate
+                                ? 'text-slate-500 font-bold'
+                                : isSunday 
+                                  ? 'text-red-400 font-bold' 
+                                  : isSaturday 
+                                    ? 'text-blue-400 font-bold' 
+                                    : 'text-slate-200'
                         }`}>
-                          {cell.dayNum}일
+                          {cell.isNextMonth ? `${cell.monthNum}/${cell.dayNum}` : `${cell.dayNum}일`}
                         </span>
 
                         <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
@@ -861,13 +884,13 @@ export default function GeojeTransportView() {
                         </div>
                       </div>
 
-                      {/* Return Team Box (저녁 18시 복귀조 2명) */}
+                      {/* Return/Evening Departure Team Box (저녁 18시 출발조 2명) */}
                       <div className={`mt-1.5 text-left rounded-xl p-2 border ${
                         isPastDate ? 'bg-slate-900/40 border-slate-800/60' : 'bg-slate-800/80 border-slate-700/80'
                       }`}>
                         <div className="flex items-center justify-between text-[11px] mb-1">
                           <span className={`font-extrabold flex items-center ${isPastDate ? 'text-slate-500' : 'text-blue-400'}`}>
-                            <Clock className="w-3 h-3 mr-1" /> 18시 복귀
+                            <Clock className="w-3 h-3 mr-1" /> 18시 출발
                           </span>
                           <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
                             isPastDate ? 'bg-slate-900 text-slate-500 border-slate-800' : 'bg-blue-500/20 text-blue-300 border-blue-500/30'
@@ -955,7 +978,7 @@ export default function GeojeTransportView() {
 
                         <div className="flex items-center space-x-2">
                           <span className="font-extrabold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/30">
-                            복귀 (18:00)
+                            18:00 출발
                           </span>
                           <span className="font-bold text-white">담당: {dayData.returnTeamDepartment || '소방행정과'}</span>
                           <span className="text-slate-300">/ 인원: {retList}</span>
@@ -1019,7 +1042,7 @@ export default function GeojeTransportView() {
                 현장 지원 보고 문자 양식 Preview:
               </p>
               <div className="bg-slate-950 p-3 rounded-xl font-mono text-slate-300 text-[11px] leading-relaxed border border-slate-800 select-all">
-                {`${selectedDateStr.split('-')[1]}/${selectedDateStr.split('-')[2]} 출발 담당 ${selectedDayData.departureTeamDepartment || '현장대응단'} / 인원 ${(selectedDayData.departureTeam || []).map(s => s.name).join(', ') || '신청가능'} / 복귀 담당 ${selectedDayData.returnTeamDepartment || '소방행정과'} / 인원 ${(selectedDayData.returnTeam || []).map(s => s.name).join(', ') || '신청가능'}`}
+                {`${selectedDateStr.split('-')[1]}/${selectedDateStr.split('-')[2]} 출발 담당 ${selectedDayData.departureTeamDepartment || '현장대응단'} / 인원 ${(selectedDayData.departureTeam || []).map(s => s.name).join(', ') || '신청가능'} / 18시 출발 담당 ${selectedDayData.returnTeamDepartment || '소방행정과'} / 인원 ${(selectedDayData.returnTeam || []).map(s => s.name).join(', ') || '신청가능'}`}
               </div>
             </div>
 
@@ -1133,17 +1156,17 @@ export default function GeojeTransportView() {
                 </div>
               </div>
 
-              {/* 2. Return Shift (저녁 18시 복귀조) */}
+              {/* 2. Evening Departure Shift (저녁 18시 출발조) */}
               <div className="bg-slate-800/70 border border-blue-500/30 rounded-2xl p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
                   <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                     <span className="bg-blue-500 text-slate-950 font-black text-xs px-2.5 py-1 rounded-lg">
-                      저녁 18시 복귀조
+                      저녁 18시 출발조
                     </span>
                     {!isEditingRetDept ? (
                       <div className="flex items-center space-x-2">
                         <span className="text-xs font-black text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/30">
-                          복귀 담당: [{selectedDayData.returnTeamDepartment || '소방행정과'}]
+                          18시 출발 담당: [{selectedDayData.returnTeamDepartment || '소방행정과'}]
                         </span>
                         <button
                           type="button"
@@ -1162,7 +1185,7 @@ export default function GeojeTransportView() {
                           type="text"
                           value={inlineRetDept}
                           onChange={(e) => setInlineRetDept(e.target.value)}
-                          placeholder="복귀 담당 부서 직접 입력"
+                          placeholder="18시 출발 담당 부서 직접 입력"
                           className="bg-slate-900 border border-blue-500/60 rounded-lg px-2.5 py-1 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-blue-500 w-44"
                         />
                         <button
@@ -1248,7 +1271,7 @@ export default function GeojeTransportView() {
                 <div className="flex items-center justify-between pb-2 border-b border-slate-700">
                   <h4 className="text-sm font-black text-white flex items-center">
                     <UserPlus className="w-4 h-4 mr-2 text-red-400" />
-                    {editingSlotInfo.shiftType === 'departure' ? '아침 06시 출발조' : '저녁 18시 복귀조'} - 자원 신청
+                    {editingSlotInfo.shiftType === 'departure' ? '아침 06시 출발조' : '저녁 18시 출발조'} - 자원 신청
                   </h4>
                   <button
                     type="button"
