@@ -168,3 +168,39 @@ exports.updateRosterMeta = async (req, res) => {
     res.status(500).json({ success: false, message: '메타 데이터 수정 중 오류가 발생했습니다.' });
   }
 };
+
+// Get Notice Text
+exports.getNotice = async (req, res) => {
+  try {
+    const noticeDoc = await GeojeTransport.findOne({ date: 'SYSTEM_NOTICE' }).lean();
+    const defaultNotice = '📢 [비상 동원 수송 안내] 의령소방서 ↔ 거제 폭우 현장 지원 인력은 출발 10분 전 본서 전정 집결 바랍니다. (문의: 현장대응단 / 소방행정과)';
+    res.json({
+      success: true,
+      noticeText: noticeDoc && noticeDoc.generalNotes ? noticeDoc.generalNotes : defaultNotice
+    });
+  } catch (err) {
+    console.error('Error fetching notice:', err);
+    res.status(500).json({ success: false, message: '공지사항 조회 중 오류가 발생했습니다.' });
+  }
+};
+
+// Update Notice Text
+exports.updateNotice = async (req, res) => {
+  try {
+    const { noticeText } = req.body;
+    let noticeDoc = await GeojeTransport.findOne({ date: 'SYSTEM_NOTICE' });
+    if (!noticeDoc) {
+      noticeDoc = new GeojeTransport({
+        date: 'SYSTEM_NOTICE',
+        generalNotes: noticeText || ''
+      });
+    } else {
+      noticeDoc.generalNotes = noticeText || '';
+    }
+    await noticeDoc.save();
+    res.json({ success: true, noticeText: noticeDoc.generalNotes, message: '공지사항이 저장되었습니다.' });
+  } catch (err) {
+    console.error('Error updating notice:', err);
+    res.status(500).json({ success: false, message: '공지사항 저장 중 오류가 발생했습니다.' });
+  }
+};

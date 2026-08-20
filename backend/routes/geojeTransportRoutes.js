@@ -3,6 +3,8 @@ const router = express.Router();
 const geojeTransportController = require('../controllers/geojeTransportController');
 
 // All routes here are strictly PUBLIC (no login token required)
+router.get('/notice', geojeTransportController.getNotice);
+router.put('/notice', geojeTransportController.updateNotice);
 router.get('/monthly', geojeTransportController.getMonthlyRoster);
 router.get('/day/:date', geojeTransportController.getDayRoster);
 router.post('/slot/:date', geojeTransportController.upsertSlot);

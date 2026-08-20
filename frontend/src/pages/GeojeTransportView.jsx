@@ -29,7 +29,9 @@ import {
   RefreshCw,
   Database,
   Eye,
-  EyeOff
+  EyeOff,
+  Megaphone,
+  Edit3
 } from 'lucide-react';
 
 const API_BASE_URL = '/api/geoje-transport';
@@ -77,7 +79,7 @@ const DEFAULT_SAMPLE_DATA = {
 export default function GeojeTransportView() {
   // Current view date state (Default to August 2026)
   const [currentDate, setCurrentDate] = useState(new Date(2026, 7, 20)); // Month is 0-indexed (7 = August)
-  const [rosterMap, setRosterMap] = useState({});
+  const [rosterMap, setRosterMap] = useState({ ...DEFAULT_SAMPLE_DATA });
   const [loading, setLoading] = useState(false);
   const [selectedDateStr, setSelectedDateStr] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -120,9 +122,47 @@ export default function GeojeTransportView() {
   const todayRef = useRef(null);
   const [displayRangeMode, setDisplayRangeMode] = useState('THIS_WEEK'); // Default: 이번주부터 보기 ('THIS_WEEK')
 
+  // System Notice State
+  const [systemNotice, setSystemNotice] = useState('📢 [비상 동원 수송 안내] 의령소방서 ↔ 거제 폭우 현장 지원 인력은 출발 10분 전 본서 전정 집결 바랍니다. (문의: 현장대응단 / 소방행정과)');
+  const [isEditingNotice, setIsEditingNotice] = useState(false);
+  const [noticeInput, setNoticeInput] = useState('');
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
+  };
+
+  // Fetch system notice text
+  const fetchSystemNotice = async () => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/notice`);
+      if (res.data && res.data.success && res.data.noticeText) {
+        setSystemNotice(res.data.noticeText);
+      }
+    } catch (err) {
+      console.warn('Notice fetch warning:', err);
+    }
+  };
+
+  // Save system notice text (Instant Optimistic + DB sync)
+  const handleSaveNotice = async () => {
+    if (!noticeInput.trim()) return;
+    const trimmedNotice = noticeInput.trim();
+
+    // 1. Instant Optimistic UI Update
+    setSystemNotice(trimmedNotice);
+    setIsEditingNotice(false);
+    showToast('⚡ 공지사항이 즉시 수정되었습니다!');
+
+    // 2. Background DB Async Save
+    try {
+      await axios.put(`${API_BASE_URL}/notice`, {
+        noticeText: trimmedNotice
+      });
+      showToast('✨ 공지사항 DB 저장 완료! 전체 사용자에게 공유되었습니다.');
+    } catch (err) {
+      console.warn('Notice save warning:', err);
+    }
   };
 
   // Fetch rosters for current month and next month seamlessly
@@ -174,8 +214,10 @@ export default function GeojeTransportView() {
   // Real-time automatic polling every 10 seconds to share inputs across all devices
   useEffect(() => {
     fetchMonthlyRosters(true);
+    fetchSystemNotice();
     const pollInterval = setInterval(() => {
       fetchMonthlyRosters(true);
+      fetchSystemNotice();
     }, 10000);
     return () => clearInterval(pollInterval);
   }, [year, month]);
@@ -483,11 +525,11 @@ export default function GeojeTransportView() {
       .map(s => s.name)
       .join(', ') || '신청자 없음 (모집중)';
 
-    const textToCopy = `[거제소방서 폭우현장 인력수송 지원]
+    const textToCopy = `[의령소방서 거제 폭우현장 인력수송 지원]
 ■ 일자: ${formattedDate}
 ■ 출발(06시): ${depDept} / 인원: ${depList}
-■ 복귀(18시): ${retDept} / 인원: ${retList}
-■ 비고: ${dayData.generalNotes || '이상 없음'}`;
+■ 출발(18시): ${retDept} / 인원: ${retList}
+■ 비고: ${dayData.generalNotes || '의령 ↔ 거제 현장 수송'}`;
 
     navigator.clipboard.writeText(textToCopy);
     showToast('📋 카카오톡/문자 전송용 보고서 양식이 복사되었습니다!');
@@ -498,7 +540,6 @@ export default function GeojeTransportView() {
     let totalVolunteers = 0;
     let completedDays = 0;
     let openSlotsCount = 0;
-    const deptCountMap = {};
 
     Object.values(rosterMap).forEach(day => {
       const depCount = (day.departureTeam || []).length;
@@ -508,22 +549,12 @@ export default function GeojeTransportView() {
       totalVolunteers += dayTotal;
       if (dayTotal >= 4) completedDays++;
       openSlotsCount += (4 - dayTotal);
-
-      [...(day.departureTeam || []), ...(day.returnTeam || [])].forEach(s => {
-        if (s.department) {
-          deptCountMap[s.department] = (deptCountMap[s.department] || 0) + 1;
-        }
-      });
     });
-
-    const sortedDepts = Object.entries(deptCountMap).sort((a, b) => b[1] - a[1]);
-    const topDept = sortedDepts[0] ? `${sortedDepts[0][0]} (${sortedDepts[0][1]}회)` : '현장대응단';
 
     return {
       totalVolunteers,
       completedDays,
-      openSlotsCount,
-      topDept
+      openSlotsCount
     };
   }, [rosterMap]);
 
@@ -548,19 +579,65 @@ export default function GeojeTransportView() {
             <div>
               <div className="flex items-center space-x-2">
                 <span className="bg-red-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
-                  거제소방서 재난대응
+                  의령소방서 재난동원
                 </span>
                 <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center">
                   <Check className="w-3 h-3 mr-1" /> 전체 공개 (자유 지원/예약)
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-1">
-                거제소방서 폭우현장 인력 수송지원 시스템
+                의령소방서 거제 폭우현장 인력 수송지원 시스템
               </h1>
               <p className="text-xs sm:text-sm text-slate-300 mt-1 flex items-center gap-1.5">
                 <Info className="w-4 h-4 text-red-400 shrink-0" />
-                <span>아침 06시 출발조(2명) 및 저녁 18시 복귀조(2명) 자원신청 달력 (누구나 접속 &amp; 이름 등록 가능)</span>
+                <span>아침 06시 출발조(2명) 및 저녁 18시 출발조(2명) 자원신청 달력 (의령 ↔ 거제 현장 수송)</span>
               </p>
+
+              {/* System Notice Banner (메인 시스템 타이틀 바로 아래) */}
+              <div className="mt-3 bg-red-950/80 border border-red-500/50 rounded-2xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg backdrop-blur">
+                {!isEditingNotice ? (
+                  <div className="flex items-center space-x-2 text-xs sm:text-sm font-extrabold text-red-100 flex-1">
+                    <Megaphone className="w-5 h-5 text-amber-400 shrink-0 animate-pulse" />
+                    <span>{systemNotice}</span>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex items-center space-x-2 w-full">
+                    <input
+                      type="text"
+                      autoFocus
+                      value={noticeInput}
+                      onChange={(e) => setNoticeInput(e.target.value)}
+                      placeholder="공지사항 내용을 입력하세요"
+                      className="flex-1 bg-slate-900 border border-red-500 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:ring-2 focus:ring-red-500 font-bold"
+                    />
+                    <button
+                      onClick={handleSaveNotice}
+                      className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl shadow border border-red-400/30 shrink-0"
+                    >
+                      저장
+                    </button>
+                    <button
+                      onClick={() => setIsEditingNotice(false)}
+                      className="text-xs text-slate-400 hover:text-white px-2 shrink-0"
+                    >
+                      취소
+                    </button>
+                  </div>
+                )}
+
+                {!isEditingNotice && (
+                  <button
+                    onClick={() => {
+                      setNoticeInput(systemNotice);
+                      setIsEditingNotice(true);
+                    }}
+                    className="text-xs text-amber-400 hover:text-amber-200 underline font-extrabold shrink-0 flex items-center bg-slate-900/80 px-2.5 py-1 rounded-lg border border-amber-500/40 shadow-sm"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 mr-1 text-amber-400" />
+                    ✏️ 공지사항 수정
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1011,10 +1088,10 @@ export default function GeojeTransportView() {
             <div className="flex items-center justify-between pb-4 border-b border-slate-700">
               <div>
                 <span className="bg-red-600/30 text-red-300 border border-red-500/40 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-                  거제소방서 수송지원
+                  의령소방서 동원 수송지원
                 </span>
                 <h3 className="text-xl font-black text-white mt-1">
-                  {selectedDateStr} 인력 수송 지원 신청 및 현황
+                  {selectedDateStr} 거제 현장 수송 지원 신청 및 현황
                 </h3>
               </div>
               <button
@@ -1029,7 +1106,7 @@ export default function GeojeTransportView() {
             <div className="mt-4 p-4 bg-slate-800/90 border border-red-900/50 rounded-2xl text-xs space-y-2">
               <p className="font-extrabold text-red-400 flex items-center">
                 <ShieldAlert className="w-4 h-4 mr-1.5" />
-                현장 지원 보고 문자 양식 Preview:
+                의령소방서 거제 현장 지원 보고 문자 양식 Preview:
               </p>
               <div className="bg-slate-950 p-3 rounded-xl font-mono text-slate-300 text-[11px] leading-relaxed border border-slate-800 select-all">
                 {`${selectedDateStr.split('-')[1]}/${selectedDateStr.split('-')[2]} 출발 담당 ${selectedDayData.departureTeamDepartment || '현장대응단'} / 인원 ${(selectedDayData.departureTeam || []).map(s => s.name).join(', ') || '신청가능'} / 18시 출발 담당 ${selectedDayData.returnTeamDepartment || '소방행정과'} / 인원 ${(selectedDayData.returnTeam || []).map(s => s.name).join(', ') || '신청가능'}`}

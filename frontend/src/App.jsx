@@ -28,7 +28,7 @@ import ResetPassword from './pages/ResetPassword';
 
 // Scalable Module Navigation Registry
 const MODULE_ROUTES = [
-  { path: '/geoje-transport', label: '거제소방서 폭우 수송지원', icon: Calendar, publicOpen: true },
+  { path: '/geoje-transport', label: '의령소방서 거제 폭우 수송지원', icon: Calendar, publicOpen: true },
   { path: '/', label: '통합 대시보드', icon: LayoutDashboard, exact: true },
   { path: '/list', label: '수난안전 시설', icon: ListChecks },
   { path: '/fire-water', label: '소방용수 관리', icon: Flame },
@@ -78,23 +78,14 @@ function App() {
                 <Shield className="w-5 h-5 text-red-400" />
               </div>
               <Link to="/geoje-transport" className="flex flex-col text-left">
-                <span className="font-extrabold text-lg tracking-tight leading-none text-white">거제소방서</span>
-                <span className="text-[10px] text-red-300 font-medium mt-0.5">폭우 현장인력 수송지원 시스템</span>
+                <span className="font-extrabold text-lg tracking-tight leading-none text-white">의령소방서</span>
+                <span className="text-[10px] text-red-300 font-medium mt-0.5">거제 폭우 현장인력 수송지원 시스템</span>
               </Link>
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold px-3 py-1 rounded-full">
-                공개 서비스 (로그인 불필요)
+                공개 서비스 (누구나 자유 접속)
               </span>
-              {token ? (
-                <Link to="/" className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3 py-1.5 rounded-lg border border-slate-700">
-                  대시보드 이동
-                </Link>
-              ) : (
-                <Link to="/login" className="text-xs bg-red-700 hover:bg-red-600 text-white font-bold px-3 py-1.5 rounded-lg shadow">
-                  관리자 로그인
-                </Link>
-              )}
             </div>
           </div>
         </nav>
