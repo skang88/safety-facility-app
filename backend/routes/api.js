@@ -11,12 +11,15 @@ const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
 const { protect } = require('../middlewares/authMiddleware');
 
+const geojeTransportRoutes = require('./geojeTransportRoutes');
+
 // Multer setup for memory storage so sharp/xlsx can process it directly
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // Mount sub-routers
 router.use('/auth', authRoutes);
+router.use('/geoje-transport', geojeTransportRoutes); // Unprotected Public Route for Geoje Transport Roster
 router.use('/users', protect, userRoutes);
 
 // Protected Routes

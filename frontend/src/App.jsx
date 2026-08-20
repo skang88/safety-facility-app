@@ -10,13 +10,15 @@ import {
   X, 
   Shield, 
   ChevronRight,
-  User as UserIcon
+  User as UserIcon,
+  Calendar
 } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import ListView from './pages/ListView';
 import FireWaterListView from './pages/FireWaterListView';
 import FireWaterMapView from './pages/FireWaterMapView';
 import VehicleListView from './pages/VehicleListView';
+import GeojeTransportView from './pages/GeojeTransportView';
 import ReportView from './pages/ReportView';
 import FireWaterReportView from './pages/FireWaterReportView';
 import Login from './pages/Login';
@@ -26,6 +28,7 @@ import ResetPassword from './pages/ResetPassword';
 
 // Scalable Module Navigation Registry
 const MODULE_ROUTES = [
+  { path: '/geoje-transport', label: '거제소방서 폭우 수송지원', icon: Calendar, publicOpen: true },
   { path: '/', label: '통합 대시보드', icon: LayoutDashboard, exact: true },
   { path: '/list', label: '수난안전 시설', icon: ListChecks },
   { path: '/fire-water', label: '소방용수 관리', icon: Flame },
@@ -49,8 +52,11 @@ function App() {
     user = null;
   }
 
-  const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
-  const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
+  const publicAuthPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
+  const openPublicPaths = ['/geoje-transport', '/transport', '/heavy-rain-transport'];
+
+  const isPublicAuthPath = publicAuthPaths.some(path => location.pathname.startsWith(path));
+  const isOpenPublicPath = openPublicPaths.some(path => location.pathname.startsWith(path));
 
   // Handle logout
   const handleLogout = () => {
@@ -60,17 +66,61 @@ function App() {
     navigate('/login');
   };
 
-  // If user is not authenticated and trying to access a private page, redirect to login
-  if (!token && !isPublicPath) {
+  // Dedicated Open Public Page View (No Auth Required)
+  if (isOpenPublicPath) {
+    return (
+      <div className="flex flex-col min-h-screen bg-slate-900 overflow-x-hidden">
+        {/* Navigation Bar for Open Access */}
+        <nav className="bg-red-950 text-white border-b border-red-900/60 py-3 px-4 shadow-lg shrink-0">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-red-600/30 p-2 rounded-xl border border-red-500/50">
+                <Shield className="w-5 h-5 text-red-400" />
+              </div>
+              <Link to="/geoje-transport" className="flex flex-col text-left">
+                <span className="font-extrabold text-lg tracking-tight leading-none text-white">거제소방서</span>
+                <span className="text-[10px] text-red-300 font-medium mt-0.5">폭우 현장인력 수송지원 시스템</span>
+              </Link>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold px-3 py-1 rounded-full">
+                공개 서비스 (로그인 불필요)
+              </span>
+              {token ? (
+                <Link to="/" className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3 py-1.5 rounded-lg border border-slate-700">
+                  대시보드 이동
+                </Link>
+              ) : (
+                <Link to="/login" className="text-xs bg-red-700 hover:bg-red-600 text-white font-bold px-3 py-1.5 rounded-lg shadow">
+                  관리자 로그인
+                </Link>
+              )}
+            </div>
+          </div>
+        </nav>
+        <main className="flex-1">
+          <Routes>
+            <Route path="/geoje-transport" element={<GeojeTransportView />} />
+            <Route path="/transport" element={<GeojeTransportView />} />
+            <Route path="/heavy-rain-transport" element={<GeojeTransportView />} />
+            <Route path="*" element={<Navigate to="/geoje-transport" replace />} />
+          </Routes>
+        </main>
+      </div>
+    );
+  }
+
+  // If user is not authenticated and trying to access a private page, redirect to geoje-transport or login
+  if (!token && !isPublicAuthPath) {
     return (
       <Routes>
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/geoje-transport" replace />} />
       </Routes>
     );
   }
 
   // If user is authenticated and trying to access public auth pages, redirect to dashboard
-  if (token && isPublicPath) {
+  if (token && isPublicAuthPath) {
     return (
       <Routes>
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -78,8 +128,8 @@ function App() {
     );
   }
 
-  // Under public path context (when NOT authenticated)
-  if (isPublicPath) {
+  // Under public auth path context (when NOT authenticated)
+  if (isPublicAuthPath) {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
@@ -276,6 +326,7 @@ function App() {
       <main className="flex-1 overflow-hidden relative print:overflow-visible">
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/geoje-transport" element={<GeojeTransportView />} />
           <Route path="/list" element={<ListView />} />
           <Route path="/fire-water" element={<FireWaterListView />} />
           <Route path="/fire-water-map" element={<FireWaterMapView />} />
