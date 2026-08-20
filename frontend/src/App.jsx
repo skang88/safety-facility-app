@@ -28,7 +28,7 @@ import ResetPassword from './pages/ResetPassword';
 
 // Scalable Module Navigation Registry
 const MODULE_ROUTES = [
-  { path: '/geoje-transport', label: '의령소방서 거제 폭우 수송지원', icon: Calendar, publicOpen: true },
+  { path: '/geoje-transport', label: '의령소방서 거제 폭우 현장동원', icon: Calendar, publicOpen: true },
   { path: '/', label: '통합 대시보드', icon: LayoutDashboard, exact: true },
   { path: '/list', label: '수난안전 시설', icon: ListChecks },
   { path: '/fire-water', label: '소방용수 관리', icon: Flame },
@@ -79,7 +79,7 @@ function App() {
               </div>
               <Link to="/geoje-transport" className="flex flex-col text-left">
                 <span className="font-extrabold text-lg tracking-tight leading-none text-white">의령소방서</span>
-                <span className="text-[10px] text-red-300 font-medium mt-0.5">거제 폭우 현장인력 수송지원 시스템</span>
+                <span className="text-[10px] text-red-300 font-medium mt-0.5">거제 폭우 현장동원 관리 시스템</span>
               </Link>
             </div>
             <div className="flex items-center space-x-2">

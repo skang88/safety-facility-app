@@ -37,17 +37,13 @@ import {
 const API_BASE_URL = '/api/geoje-transport';
 
 const DEPARTMENTS = [
+  '구조대',
+  '의령센터',
+  '부림센터',
+  '정곡센터',
   '현장대응단',
   '소방행정과',
   '예방안전과',
-  '119재난대응과',
-  '옥포119안전센터',
-  '고현119안전센터',
-  '장승포119안전센터',
-  '거제119안전센터',
-  '동부119안전센터',
-  '소방구조대',
-  '수난구조대',
   '직접 입력'
 ];
 
@@ -68,9 +64,9 @@ const RANKS = [
 const DEFAULT_SAMPLE_DATA = {
   '2026-08-20': {
     date: '2026-08-20',
-    departureTeamDepartment: '현장대응단',
+    departureTeamDepartment: '구조대',
     departureTeam: [],
-    returnTeamDepartment: '소방행정과',
+    returnTeamDepartment: '의령센터',
     returnTeam: [],
     generalNotes: ''
   }
@@ -86,7 +82,7 @@ export default function GeojeTransportView() {
 
   // Form states for adding/editing a volunteer slot
   const [editingSlotInfo, setEditingSlotInfo] = useState(null); // { shiftType: 'departure'|'return', slotIndex: 0|1 }
-  const [formDept, setFormDept] = useState('현장대응단');
+  const [formDept, setFormDept] = useState('구조대');
   const [formCustomDept, setFormCustomDept] = useState('');
   const [formRank, setFormRank] = useState('소방위');
   const [formCustomRank, setFormCustomRank] = useState('');
@@ -123,7 +119,7 @@ export default function GeojeTransportView() {
   const [displayRangeMode, setDisplayRangeMode] = useState('THIS_WEEK'); // Default: 이번주부터 보기 ('THIS_WEEK')
 
   // System Notice State
-  const [systemNotice, setSystemNotice] = useState('📢 [비상 동원 수송 안내] 의령소방서 ↔ 거제 폭우 현장 지원 인력은 출발 10분 전 본서 전정 집결 바랍니다. (문의: 현장대응단 / 소방행정과)');
+  const [systemNotice, setSystemNotice] = useState('📢 [비상 현장동원 안내] 의령소방서 ↔ 거제 폭우 현장 동원 인력은 출발 10분 전 지정 센터/부서 집결 바랍니다. (문의: 구조대 / 의령센터 / 부림센터 / 정곡센터)');
   const [isEditingNotice, setIsEditingNotice] = useState(false);
   const [noticeInput, setNoticeInput] = useState('');
 
@@ -339,10 +335,26 @@ export default function GeojeTransportView() {
   const handleOpenDayModal = (dateStr) => {
     if (!dateStr) return;
     setSelectedDateStr(dateStr);
-    setIsModalOpen(true);
+    
+    // Ensure entry exists for selected date
+    if (!rosterMap[dateStr]) {
+      setRosterMap(prev => ({
+        ...prev,
+        [dateStr]: {
+          date: dateStr,
+          departureTeamDepartment: '구조대',
+          departureTeam: [],
+          returnTeamDepartment: '의령센터',
+          returnTeam: [],
+          generalNotes: ''
+        }
+      }));
+    }
+    
     setEditingSlotInfo(null);
     setIsEditingDepDept(false);
     setIsEditingRetDept(false);
+    setIsModalOpen(true);
   };
 
   // Direct team department update handler (Optimistic Instant 0ms + DB sync)
@@ -364,7 +376,7 @@ export default function GeojeTransportView() {
       ...prev,
       [selectedDateStr]: currentDay
     }));
-    showToast(`⚡ 담당 부서가 '${trimmedDept}'(으)로 즉시 변경되었습니다.`);
+    showToast(`⚡ ${shiftType === 'departure' ? '06시' : '18시'} 동원 담당 부서가 [${trimmedDept}](으)로 변경되었습니다!`);
 
     // 2. Background DB Async Save
     try {
@@ -388,9 +400,9 @@ export default function GeojeTransportView() {
     if (!selectedDateStr) return null;
     return rosterMap[selectedDateStr] || {
       date: selectedDateStr,
-      departureTeamDepartment: '현장대응단',
+      departureTeamDepartment: '구조대',
       departureTeam: [],
-      returnTeamDepartment: '소방행정과',
+      returnTeamDepartment: '의령센터',
       returnTeam: [],
       generalNotes: ''
     };
@@ -399,15 +411,18 @@ export default function GeojeTransportView() {
   // Start slot registration / edit
   const handleStartEditSlot = (shiftType, slotIndex, existingSlot) => {
     setEditingSlotInfo({ shiftType, slotIndex });
-    if (existingSlot) {
-      setFormName(existingSlot.name || '');
-      setFormPhone(existingSlot.phone || '');
-      setFormNote(existingSlot.note || '');
-    } else {
-      setFormName('');
-      setFormPhone('');
-      setFormNote('');
-    }
+    const targetDept = shiftType === 'departure'
+      ? (selectedDayData?.departureTeamDepartment || '구조대')
+      : (selectedDayData?.returnTeamDepartment || '의령센터');
+
+    setFormTeamDept(targetDept);
+    setFormDept(DEPARTMENTS.includes(targetDept) ? targetDept : '구조대');
+    setFormCustomDept(DEPARTMENTS.includes(targetDept) ? '' : targetDept);
+    setFormRank('소방위');
+    setFormCustomRank('');
+    setFormName(existingSlot ? existingSlot.name : '');
+    setFormPhone(existingSlot ? existingSlot.phone || '' : '');
+    setFormNote(existingSlot ? existingSlot.note || '' : '');
   };
 
   // Submit volunteer slot registration (Optimistic instant response + DB sync)
@@ -450,7 +465,7 @@ export default function GeojeTransportView() {
       [selectedDateStr]: currentDay
     }));
     setEditingSlotInfo(null);
-    showToast('⚡ 자원 신청이 즉시 완료되었습니다!');
+    showToast('⚡ 동원 지원 명단이 즉시 등록되었습니다!');
 
     // 2. Background DB Async Save
     try {
@@ -477,7 +492,7 @@ export default function GeojeTransportView() {
 
   // Cancel/Remove volunteer slot (Optimistic instant response + DB sync)
   const handleCancelSlot = async (shiftType, slotIndex) => {
-    if (!window.confirm('정말로 자원 신청을 취소하시겠습니까?')) return;
+    if (!window.confirm('정말로 동원 신청을 취소하시겠습니까?')) return;
 
     // 1. Instant Optimistic Local Update (0ms delay!)
     const currentDay = { ...selectedDayData };
@@ -515,7 +530,7 @@ export default function GeojeTransportView() {
     const dayOfWeekStr = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
     const formattedDate = `${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일(${dayOfWeekStr})`;
 
-    const depDept = dayData.departureTeamDepartment || '현장대응단';
+    const depDept = dayData.departureTeamDepartment || '구조대';
     const depList = (dayData.departureTeam || [])
       .map(s => s.name)
       .join(', ') || '신청자 없음 (모집중)';
@@ -578,11 +593,11 @@ export default function GeojeTransportView() {
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                의령소방서 거제 폭우현장 인력 수송지원 시스템
+                의령소방서 거제 폭우현장 인력 동원지정 시스템
               </h1>
               <p className="text-xs sm:text-sm text-slate-300 mt-1 flex items-center gap-1.5 font-medium">
                 <Info className="w-4 h-4 text-red-400 shrink-0" />
-                <span>아침 06시 출발조(2명) 및 저녁 18시 출발조(2명) 자원신청 달력 (의령 ↔ 거제 현장 수송)</span>
+                <span>아침 06시 동원조(2명) 및 저녁 18시 동원조(2명) 현장동원 지정 달력 (구조대 / 의령센터 / 부림센터 / 정곡센터)</span>
               </p>
             </div>
           </div>
@@ -604,7 +619,7 @@ export default function GeojeTransportView() {
               className="flex items-center px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold rounded-xl shadow-lg hover:shadow-red-600/30 transition border border-red-400/30 text-xs sm:text-sm shrink-0"
             >
               <UserPlus className="w-4 h-4 mr-2" />
-              오늘(8/20) 자원 신청하기
+              오늘(8/20) 현장동원 신청
             </button>
           </div>
         </div>
@@ -666,7 +681,7 @@ export default function GeojeTransportView() {
               <CalendarCheck className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-semibold">이번 달 총 지원인원</p>
+              <p className="text-xs text-slate-400 font-semibold">이번 달 총 동원인원</p>
               <p className="text-xl font-black text-white mt-0.5">{statsSummary.totalVolunteers} <span className="text-xs text-slate-400 font-normal">명</span></p>
             </div>
           </div>
@@ -676,7 +691,7 @@ export default function GeojeTransportView() {
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-semibold">모집 완료된 일자 (4/4명)</p>
+              <p className="text-xs text-slate-400 font-semibold">동원 완료된 일자 (4/4명)</p>
               <p className="text-xl font-black text-emerald-400 mt-0.5">{statsSummary.completedDays} <span className="text-xs text-slate-400 font-normal">일</span></p>
             </div>
           </div>
@@ -687,7 +702,7 @@ export default function GeojeTransportView() {
             </div>
             <div>
               <p className="text-xs text-slate-400 font-semibold">현재 모집 잔여 석</p>
-              <p className="text-xl font-black text-amber-400 mt-0.5">{statsSummary.openSlotsCount} <span className="text-xs text-slate-400 font-normal">자리에 지원 가능</span></p>
+              <p className="text-xl font-black text-amber-400 mt-0.5">{statsSummary.openSlotsCount} <span className="text-xs text-slate-400 font-normal">자리에 동원 가능</span></p>
             </div>
           </div>
         </div>
@@ -699,107 +714,78 @@ export default function GeojeTransportView() {
         {/* Navigation Bar */}
         <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-4 shadow-xl mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
           
-          {/* Month Navigation & Refresh */}
-          <div className="flex items-center space-x-2 flex-wrap gap-y-2">
-            <button
-              onClick={handlePrevMonth}
-              className="p-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 transition border border-slate-600"
-              title="이전 달"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            
-            <h2 className="text-lg sm:text-xl font-black text-white tracking-wide px-1">
-              {year}년 {month}월
-            </h2>
-
-            <button
-              onClick={handleNextMonth}
-              className="p-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 transition border border-slate-600"
-              title="다음 달"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
+          <div className="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
+            <div className="flex items-center space-x-1 bg-slate-900 border border-slate-700 rounded-xl p-1">
+              <button
+                onClick={handlePrevMonth}
+                className="p-2 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition"
+                title="이전 달"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <span className="px-3 font-black text-base text-white">
+                {year}년 {month}월
+              </span>
+              <button
+                onClick={handleNextMonth}
+                className="p-2 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition"
+                title="다음 달"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
 
             <button
               onClick={handleToday}
-              className="px-3 py-2 rounded-xl bg-red-900/60 hover:bg-red-800 text-red-200 border border-red-700/50 text-xs font-bold transition"
+              className="px-3.5 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 rounded-xl text-xs font-black transition"
             >
               오늘로 이동
             </button>
 
-            <button
-              onClick={() => fetchMonthlyRosters(false)}
-              disabled={loading}
-              className="px-3.5 py-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 text-xs font-black transition flex items-center shadow-inner"
-              title="최신 DB 데이터 새로고침"
+            {/* Display Range Filter Dropdown */}
+            <select
+              value={displayRangeMode}
+              onChange={(e) => setDisplayRangeMode(e.target.value)}
+              className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
             >
-              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin text-emerald-400' : 'text-emerald-400'}`} />
-              실시간 새로고침
-            </button>
-
-            {/* Display Range Selector */}
-            <div className="flex items-center space-x-1.5 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-700 shadow-inner ml-2">
-              <CalendarIcon className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-xs font-extrabold text-slate-400">표시 범위:</span>
-              <select
-                value={displayRangeMode}
-                onChange={(e) => {
-                  setDisplayRangeMode(e.target.value);
-                  if (e.target.value === 'LAST_WEEK') showToast('📅 지난주(8월 9일~)부터 표시됩니다.');
-                  if (e.target.value === 'THIS_WEEK') showToast('📅 이번주(8월 16일~)부터 표시됩니다.');
-                  if (e.target.value === 'FULL') showToast('📅 전체 월(8월 1일~31일)이 표시됩니다.');
-                }}
-                className="bg-transparent text-xs font-black text-amber-300 outline-none cursor-pointer"
-              >
-                <option value="LAST_WEEK" className="bg-slate-900 text-white font-bold">지난주부터 보기 (8/9~)</option>
-                <option value="THIS_WEEK" className="bg-slate-900 text-white font-bold">이번주부터 보기 (8/16~)</option>
-                <option value="FULL" className="bg-slate-900 text-white font-bold">전체 달력 보기 (1일~31일)</option>
-              </select>
-            </div>
+              <option value="THIS_WEEK">📅 표시 범위: 이번주부터 보기 (8/16~)</option>
+              <option value="LAST_WEEK">📅 표시 범위: 지난주부터 보기 (8/9~)</option>
+              <option value="FULL">📅 표시 범위: 전체 달력 보기 (1일~31일)</option>
+            </select>
           </div>
 
           {/* Department Filter & Search */}
           <div className="flex items-center space-x-3 w-full md:w-auto">
-            {/* Department Selector */}
-            <div className="flex items-center space-x-2 bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl flex-1 md:flex-initial">
-              <Filter className="w-4 h-4 text-red-400" />
-              <span className="text-xs font-bold text-slate-300">부서 필터:</span>
+            <div className="relative flex-1 md:w-56">
+              <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <select
                 value={selectedDeptFilter}
                 onChange={(e) => setSelectedDeptFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs font-bold text-slate-200 outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
               >
-                <option value="ALL" className="bg-slate-900">전체 부서 보기</option>
+                <option value="ALL">전체 센터/부서 보기</option>
                 {DEPARTMENTS.filter(d => d !== '직접 입력').map(dept => (
-                  <option key={dept} value={dept} className="bg-slate-900">{dept}</option>
+                  <option key={dept} value={dept}>{dept}</option>
                 ))}
               </select>
             </div>
 
-            {/* View Mode Toggle */}
-            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
+            <div className="flex items-center space-x-1 bg-slate-900 border border-slate-700 p-1 rounded-xl">
               <button
                 onClick={() => setViewMode('calendar')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center ${
-                  viewMode === 'calendar' 
-                    ? 'bg-red-600 text-white shadow' 
-                    : 'text-slate-400 hover:text-slate-200'
+                className={`px-3 py-1.5 text-xs font-black rounded-lg transition ${
+                  viewMode === 'calendar' ? 'bg-red-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <CalendarIcon className="w-3.5 h-3.5 mr-1.5" />
-                달력
+                달력형
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center ${
-                  viewMode === 'list' 
-                    ? 'bg-red-600 text-white shadow' 
-                    : 'text-slate-400 hover:text-slate-200'
+                className={`px-3 py-1.5 text-xs font-black rounded-lg transition ${
+                  viewMode === 'list' ? 'bg-red-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <FileText className="w-3.5 h-3.5 mr-1.5" />
-                목록
+                목록형
               </button>
             </div>
           </div>
@@ -834,9 +820,9 @@ export default function GeojeTransportView() {
 
                 const dayData = rosterMap[cell.dateStr] || {
                   date: cell.dateStr,
-                  departureTeamDepartment: '현장대응단',
+                  departureTeamDepartment: '구조대',
                   departureTeam: [],
-                  returnTeamDepartment: '소방행정과',
+                  returnTeamDepartment: '의령센터',
                   returnTeam: []
                 };
 
@@ -907,22 +893,22 @@ export default function GeojeTransportView() {
                                 ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' 
                                 : 'bg-slate-800 text-slate-400 border-slate-700'
                         }`}>
-                          {isPastDate ? (totalCount > 0 ? `종료 (${totalCount}/4)` : '지원 마감') : isComplete ? '완료 (4/4)' : `${totalCount}/4명 모집중`}
+                          {isPastDate ? (totalCount > 0 ? `종료 (${totalCount}/4)` : '동원 마감') : isComplete ? '완료 (4/4)' : `${totalCount}/4명 동원중`}
                         </span>
                       </div>
 
-                      {/* Departure Team Box (아침 06시 출발조 2명) */}
+                      {/* Departure Team Box (아침 06시 동원조 2명) */}
                       <div className={`mt-2 text-left rounded-xl p-2 border ${
                         isPastDate ? 'bg-slate-900/40 border-slate-800/60' : 'bg-slate-800/80 border-slate-700/80'
                       }`}>
                         <div className="flex items-center justify-between text-[11px] mb-1">
                           <span className={`font-extrabold flex items-center ${isPastDate ? 'text-slate-500' : 'text-amber-400'}`}>
-                            <Clock className="w-3 h-3 mr-1" /> 06시 출발
+                            <Clock className="w-3 h-3 mr-1" /> 06시 동원
                           </span>
                           <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
                             isPastDate ? 'bg-slate-900 text-slate-500 border-slate-800' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
                           }`}>
-                            {dayData.departureTeamDepartment || '현장대응단'}
+                            {dayData.departureTeamDepartment || '구조대'}
                           </span>
                         </div>
                         <div className="space-y-0.5">
@@ -945,18 +931,18 @@ export default function GeojeTransportView() {
                         </div>
                       </div>
 
-                      {/* Return/Evening Departure Team Box (저녁 18시 출발조 2명) */}
+                      {/* Return/Evening Departure Team Box (저녁 18시 동원조 2명) */}
                       <div className={`mt-1.5 text-left rounded-xl p-2 border ${
                         isPastDate ? 'bg-slate-900/40 border-slate-800/60' : 'bg-slate-800/80 border-slate-700/80'
                       }`}>
                         <div className="flex items-center justify-between text-[11px] mb-1">
                           <span className={`font-extrabold flex items-center ${isPastDate ? 'text-slate-500' : 'text-blue-400'}`}>
-                            <Clock className="w-3 h-3 mr-1" /> 18시 출발
+                            <Clock className="w-3 h-3 mr-1" /> 18시 동원
                           </span>
                           <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
                             isPastDate ? 'bg-slate-900 text-slate-500 border-slate-800' : 'bg-blue-500/20 text-blue-300 border-blue-500/30'
                           }`}>
-                            {dayData.returnTeamDepartment || '소방행정과'}
+                            {dayData.returnTeamDepartment || '의령센터'}
                           </span>
                         </div>
                         <div className="space-y-0.5">
@@ -1007,7 +993,7 @@ export default function GeojeTransportView() {
           <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl shadow-xl p-6 space-y-4">
             <h3 className="text-lg font-bold text-white flex items-center">
               <FileText className="w-5 h-5 mr-2 text-red-400" />
-              {year}년 {month}월 수송지원 전체 명단 목록
+              {year}년 {month}월 현장동원 지정 명단 목록
             </h3>
 
             <div className="divide-y divide-slate-700/60 border border-slate-700 rounded-xl overflow-hidden">
@@ -1031,17 +1017,17 @@ export default function GeojeTransportView() {
                       <div className="space-y-1 text-xs">
                         <div className="flex items-center space-x-2">
                           <span className="font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
-                            출발 (06:00)
+                            동원 (06:00)
                           </span>
-                          <span className="font-bold text-white">담당: {dayData.departureTeamDepartment || '현장대응단'}</span>
+                          <span className="font-bold text-white">담당: {dayData.departureTeamDepartment || '구조대'}</span>
                           <span className="text-slate-300">/ 인원: {depList}</span>
                         </div>
 
                         <div className="flex items-center space-x-2">
                           <span className="font-extrabold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/30">
-                            18:00 출발
+                            동원 (18:00)
                           </span>
-                          <span className="font-bold text-white">담당: {dayData.returnTeamDepartment || '소방행정과'}</span>
+                          <span className="font-bold text-white">담당: {dayData.returnTeamDepartment || '의령센터'}</span>
                           <span className="text-slate-300">/ 인원: {retList}</span>
                         </div>
                       </div>
@@ -1082,10 +1068,10 @@ export default function GeojeTransportView() {
             <div className="flex items-center justify-between pb-4 border-b border-slate-700">
               <div>
                 <span className="bg-red-600/30 text-red-300 border border-red-500/40 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-                  의령소방서 동원 수송지원
+                  의령소방서 비상재난동원
                 </span>
                 <h3 className="text-xl font-black text-white mt-1">
-                  {selectedDateStr} 거제 현장 수송 지원 신청 및 현황
+                  {selectedDateStr} 거제 현장동원 지정 및 신청 현황
                 </h3>
               </div>
               <button
@@ -1100,37 +1086,37 @@ export default function GeojeTransportView() {
             <div className="mt-4 p-4 bg-slate-800/90 border border-red-900/50 rounded-2xl text-xs space-y-2">
               <p className="font-extrabold text-red-400 flex items-center">
                 <ShieldAlert className="w-4 h-4 mr-1.5" />
-                의령소방서 거제 현장 지원 보고 문자 양식 Preview:
+                의령소방서 거제 현장동원 보고 문자 양식 Preview:
               </p>
               <div className="bg-slate-950 p-3 rounded-xl font-mono text-slate-300 text-[11px] leading-relaxed border border-slate-800 select-all">
-                {`${selectedDateStr.split('-')[1]}/${selectedDateStr.split('-')[2]} 출발 담당 ${selectedDayData.departureTeamDepartment || '현장대응단'} / 인원 ${(selectedDayData.departureTeam || []).map(s => s.name).join(', ') || '신청가능'} / 18시 출발 담당 ${selectedDayData.returnTeamDepartment || '소방행정과'} / 인원 ${(selectedDayData.returnTeam || []).map(s => s.name).join(', ') || '신청가능'}`}
+                {`${selectedDateStr.split('-')[1]}/${selectedDateStr.split('-')[2]} 동원(06시) 담당 ${selectedDayData.departureTeamDepartment || '구조대'} / 인원 ${(selectedDayData.departureTeam || []).map(s => s.name).join(', ') || '신청가능'} / 동원(18시) 담당 ${selectedDayData.returnTeamDepartment || '의령센터'} / 인원 ${(selectedDayData.returnTeam || []).map(s => s.name).join(', ') || '신청가능'}`}
               </div>
             </div>
 
             {/* Shift Slot Cards */}
             <div className="mt-6 space-y-6">
               
-              {/* 1. Departure Shift (아침 06시 출발조) */}
+              {/* 1. Departure Shift (아침 06시 동원조) */}
               <div className="bg-slate-800/70 border border-amber-500/30 rounded-2xl p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
                   <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                     <span className="bg-amber-500 text-slate-950 font-black text-xs px-2.5 py-1 rounded-lg">
-                      아침 06시 출발조
+                      아침 06시 동원조
                     </span>
                     {!isEditingDepDept ? (
                       <div className="flex items-center space-x-2">
                         <span className="text-xs font-black text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
-                          출발 담당: [{selectedDayData.departureTeamDepartment || '현장대응단'}]
+                          06시 동원 담당: [{selectedDayData.departureTeamDepartment || '구조대'}]
                         </span>
                         <button
                           type="button"
                           onClick={() => {
-                            setInlineDepDept(selectedDayData.departureTeamDepartment || '현장대응단');
+                            setInlineDepDept(selectedDayData.departureTeamDepartment || '구조대');
                             setIsEditingDepDept(true);
                           }}
                           className="text-[11px] text-amber-400 hover:text-amber-200 underline font-bold"
                         >
-                          ✏️ 부서 직접 입력/수정
+                          ✏️ 센터/부서 변경
                         </button>
                       </div>
                     ) : (
@@ -1139,7 +1125,7 @@ export default function GeojeTransportView() {
                           type="text"
                           value={inlineDepDept}
                           onChange={(e) => setInlineDepDept(e.target.value)}
-                          placeholder="출발 담당 부서 직접 입력"
+                          placeholder="담당 센터/부서 직접 입력"
                           className="bg-slate-900 border border-amber-500/60 rounded-lg px-2.5 py-1 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-amber-500 w-44"
                         />
                         <button
@@ -1185,7 +1171,7 @@ export default function GeojeTransportView() {
                         ) : (
                           <div>
                             <p className="text-xs font-bold text-slate-400">자리 #{slotIdx + 1}</p>
-                            <p className="text-[11px] text-slate-500">지원자 없음</p>
+                            <p className="text-[11px] text-slate-500">동원 인원 없음</p>
                           </div>
                         )}
 
@@ -1217,27 +1203,27 @@ export default function GeojeTransportView() {
                 </div>
               </div>
 
-              {/* 2. Evening Departure Shift (저녁 18시 출발조) */}
+              {/* 2. Evening Departure Shift (저녁 18시 동원조) */}
               <div className="bg-slate-800/70 border border-blue-500/30 rounded-2xl p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
                   <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                     <span className="bg-blue-500 text-slate-950 font-black text-xs px-2.5 py-1 rounded-lg">
-                      저녁 18시 출발조
+                      저녁 18시 동원조
                     </span>
                     {!isEditingRetDept ? (
                       <div className="flex items-center space-x-2">
                         <span className="text-xs font-black text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/30">
-                          18시 출발 담당: [{selectedDayData.returnTeamDepartment || '소방행정과'}]
+                          18시 동원 담당: [{selectedDayData.returnTeamDepartment || '의령센터'}]
                         </span>
                         <button
                           type="button"
                           onClick={() => {
-                            setInlineRetDept(selectedDayData.returnTeamDepartment || '소방행정과');
+                            setInlineRetDept(selectedDayData.returnTeamDepartment || '의령센터');
                             setIsEditingRetDept(true);
                           }}
                           className="text-[11px] text-blue-400 hover:text-blue-200 underline font-bold"
                         >
-                          ✏️ 부서 직접 입력/수정
+                          ✏️ 센터/부서 변경
                         </button>
                       </div>
                     ) : (
@@ -1246,7 +1232,7 @@ export default function GeojeTransportView() {
                           type="text"
                           value={inlineRetDept}
                           onChange={(e) => setInlineRetDept(e.target.value)}
-                          placeholder="18시 출발 담당 부서 직접 입력"
+                          placeholder="담당 센터/부서 직접 입력"
                           className="bg-slate-900 border border-blue-500/60 rounded-lg px-2.5 py-1 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-blue-500 w-44"
                         />
                         <button
@@ -1292,7 +1278,7 @@ export default function GeojeTransportView() {
                         ) : (
                           <div>
                             <p className="text-xs font-bold text-slate-400">자리 #{slotIdx + 1}</p>
-                            <p className="text-[11px] text-slate-500">지원자 없음</p>
+                            <p className="text-[11px] text-slate-500">동원 인원 없음</p>
                           </div>
                         )}
 
@@ -1332,7 +1318,7 @@ export default function GeojeTransportView() {
                 <div className="flex items-center justify-between pb-2 border-b border-slate-700">
                   <h4 className="text-sm font-black text-white flex items-center">
                     <UserPlus className="w-4 h-4 mr-2 text-red-400" />
-                    {editingSlotInfo.shiftType === 'departure' ? '아침 06시 출발조' : '저녁 18시 출발조'} - 자원 신청
+                    {editingSlotInfo.shiftType === 'departure' ? '아침 06시 동원조' : '저녁 18시 동원조'} - 현장동원 신청
                   </h4>
                   <button
                     type="button"
