@@ -261,13 +261,13 @@ export default function GeojeTransportView() {
     }
 
     // Filter display range:
-    // LAST_WEEK: 지난주부터 표시 (8월 9일~). 지지난주 이전(1~8일) 7개 칸 잘라냄
-    // THIS_WEEK: 이번주부터 표시 (8월 16일~). 지지난주/지난주(1~15일) 14개 칸 잘라냄
+    // LAST_WEEK: 지난주부터 표시 (8월 9일 일요일~). index >= 14
+    // THIS_WEEK: 이번주부터 표시 (8월 16일 일요일~). index >= 21
     if (year === 2026 && month === 8) {
       if (displayRangeMode === 'LAST_WEEK') {
-        days = days.filter((d, index) => index >= 7);
-      } else if (displayRangeMode === 'THIS_WEEK') {
         days = days.filter((d, index) => index >= 14);
+      } else if (displayRangeMode === 'THIS_WEEK') {
+        days = days.filter((d, index) => index >= 21);
       }
     }
 
