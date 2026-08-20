@@ -83,9 +83,6 @@ function App() {
               </Link>
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold px-3 py-1 rounded-full">
-                공개 서비스 (누구나 자유 접속)
-              </span>
             </div>
           </div>
         </nav>

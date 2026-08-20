@@ -569,84 +569,30 @@ export default function GeojeTransportView() {
         </div>
       )}
 
-      {/* Top Header / Public Emergency Service Notice Banner */}
+      {/* Top Header Banner */}
       <header className="bg-gradient-to-r from-red-900 via-slate-900 to-red-950 border-b border-red-800/40 shadow-xl py-6 px-4 sm:px-8">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-red-600/30 rounded-2xl border border-red-500/50 shadow-inner flex items-center justify-center">
+            <div className="p-3 bg-red-600/30 rounded-2xl border border-red-500/50 shadow-inner flex items-center justify-center shrink-0">
               <ShieldAlert className="w-9 h-9 text-red-400 animate-pulse" />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <span className="bg-red-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
-                  의령소방서 재난동원
-                </span>
-                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center">
-                  <Check className="w-3 h-3 mr-1" /> 전체 공개 (자유 지원/예약)
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-1">
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 의령소방서 거제 폭우현장 인력 수송지원 시스템
               </h1>
-              <p className="text-xs sm:text-sm text-slate-300 mt-1 flex items-center gap-1.5">
+              <p className="text-xs sm:text-sm text-slate-300 mt-1 flex items-center gap-1.5 font-medium">
                 <Info className="w-4 h-4 text-red-400 shrink-0" />
                 <span>아침 06시 출발조(2명) 및 저녁 18시 출발조(2명) 자원신청 달력 (의령 ↔ 거제 현장 수송)</span>
               </p>
-
-              {/* System Notice Banner (메인 시스템 타이틀 바로 아래) */}
-              <div className="mt-3 bg-red-950/80 border border-red-500/50 rounded-2xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg backdrop-blur">
-                {!isEditingNotice ? (
-                  <div className="flex items-center space-x-2 text-xs sm:text-sm font-extrabold text-red-100 flex-1">
-                    <Megaphone className="w-5 h-5 text-amber-400 shrink-0 animate-pulse" />
-                    <span>{systemNotice}</span>
-                  </div>
-                ) : (
-                  <div className="flex-1 flex items-center space-x-2 w-full">
-                    <input
-                      type="text"
-                      autoFocus
-                      value={noticeInput}
-                      onChange={(e) => setNoticeInput(e.target.value)}
-                      placeholder="공지사항 내용을 입력하세요"
-                      className="flex-1 bg-slate-900 border border-red-500 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:ring-2 focus:ring-red-500 font-bold"
-                    />
-                    <button
-                      onClick={handleSaveNotice}
-                      className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl shadow border border-red-400/30 shrink-0"
-                    >
-                      저장
-                    </button>
-                    <button
-                      onClick={() => setIsEditingNotice(false)}
-                      className="text-xs text-slate-400 hover:text-white px-2 shrink-0"
-                    >
-                      취소
-                    </button>
-                  </div>
-                )}
-
-                {!isEditingNotice && (
-                  <button
-                    onClick={() => {
-                      setNoticeInput(systemNotice);
-                      setIsEditingNotice(true);
-                    }}
-                    className="text-xs text-amber-400 hover:text-amber-200 underline font-extrabold shrink-0 flex items-center bg-slate-900/80 px-2.5 py-1 rounded-lg border border-amber-500/40 shadow-sm"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 mr-1 text-amber-400" />
-                    ✏️ 공지사항 수정
-                  </button>
-                )}
-              </div>
             </div>
           </div>
 
           {/* Action buttons & Stats header */}
-          <div className="flex items-center space-x-2 w-full md:w-auto justify-end">
+          <div className="flex items-center space-x-2.5 w-full md:w-auto justify-end shrink-0">
             <button
               onClick={() => fetchMonthlyRosters(false)}
               disabled={loading}
-              className="flex items-center px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold rounded-xl border border-slate-700 shadow-md transition text-xs"
+              className="flex items-center px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold rounded-xl border border-slate-700 shadow-md transition text-xs shrink-0"
               title="실시간 DB 새로고침"
             >
               <RefreshCw className={`w-4 h-4 mr-1.5 text-emerald-400 ${loading ? 'animate-spin' : ''}`} />
@@ -655,7 +601,7 @@ export default function GeojeTransportView() {
 
             <button
               onClick={() => handleOpenDayModal('2026-08-20')}
-              className="flex items-center px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold rounded-xl shadow-lg hover:shadow-red-600/30 transition border border-red-400/30 text-sm"
+              className="flex items-center px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold rounded-xl shadow-lg hover:shadow-red-600/30 transition border border-red-400/30 text-xs sm:text-sm shrink-0"
             >
               <UserPlus className="w-4 h-4 mr-2" />
               오늘(8/20) 자원 신청하기
@@ -663,6 +609,54 @@ export default function GeojeTransportView() {
           </div>
         </div>
       </header>
+
+      {/* System Notice Banner (헤더 아래 전체 폭 독립 배치) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-8 mt-5 w-full">
+        <div className="bg-red-950/80 border border-red-500/50 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xl backdrop-blur">
+          {!isEditingNotice ? (
+            <div className="flex items-center space-x-3 text-xs sm:text-sm font-extrabold text-red-100 flex-1">
+              <Megaphone className="w-5 h-5 text-amber-400 shrink-0 animate-pulse" />
+              <span>{systemNotice}</span>
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center space-x-2 w-full">
+              <input
+                type="text"
+                autoFocus
+                value={noticeInput}
+                onChange={(e) => setNoticeInput(e.target.value)}
+                placeholder="공지사항 내용을 입력하세요"
+                className="flex-1 bg-slate-900 border border-red-500 rounded-xl px-3.5 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-red-500 font-bold"
+              />
+              <button
+                onClick={handleSaveNotice}
+                className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow border border-red-400/30 shrink-0"
+              >
+                저장
+              </button>
+              <button
+                onClick={() => setIsEditingNotice(false)}
+                className="text-xs text-slate-400 hover:text-white px-2 shrink-0 font-bold"
+              >
+                취소
+              </button>
+            </div>
+          )}
+
+          {!isEditingNotice && (
+            <button
+              onClick={() => {
+                setNoticeInput(systemNotice);
+                setIsEditingNotice(true);
+              }}
+              className="text-xs text-amber-300 hover:text-white font-extrabold shrink-0 flex items-center bg-slate-900/90 px-3 py-1.5 rounded-xl border border-amber-500/40 shadow-sm transition hover:bg-slate-800"
+            >
+              <Edit3 className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
+              ✏️ 공지사항 수정
+            </button>
+          )}
+        </div>
+      </section>
 
       {/* KPI Overview Summary Dashboard Cards */}
       <section className="max-w-7xl mx-auto px-4 sm:px-8 mt-6 w-full">
