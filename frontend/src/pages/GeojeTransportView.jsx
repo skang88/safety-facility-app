@@ -134,6 +134,12 @@ export default function GeojeTransportView() {
     return `${yearVal}-${mm}-${dd}`;
   };
 
+  // Inline edit state for Team Departments
+  const [inlineDepDept, setInlineDepDept] = useState('');
+  const [inlineRetDept, setInlineRetDept] = useState('');
+  const [isEditingDepDept, setIsEditingDepDept] = useState(false);
+  const [isEditingRetDept, setIsEditingRetDept] = useState(false);
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
@@ -251,6 +257,24 @@ export default function GeojeTransportView() {
     setSelectedDateStr(dateStr);
     setIsModalOpen(true);
     setEditingSlotInfo(null);
+    setIsEditingDepDept(false);
+    setIsEditingRetDept(false);
+  };
+
+  // Direct team department update handler
+  const handleSaveTeamDept = async (shiftType, newDeptName) => {
+    if (!selectedDateStr || !newDeptName || !newDeptName.trim()) return;
+    const currentDay = { ...selectedDayData };
+    const trimmedDept = newDeptName.trim();
+    if (shiftType === 'departure') {
+      currentDay.departureTeamDepartment = trimmedDept;
+      setIsEditingDepDept(false);
+    } else {
+      currentDay.returnTeamDepartment = trimmedDept;
+      setIsEditingRetDept(false);
+    }
+    await updateRosterData(selectedDateStr, currentDay);
+    showToast(`담당 부서가 '${trimmedDept}'(으)로 변경되었습니다.`);
   };
 
   const selectedDayData = useMemo(() => {
@@ -902,14 +926,52 @@ export default function GeojeTransportView() {
               
               {/* 1. Departure Shift (아침 06시 출발조) */}
               <div className="bg-slate-800/70 border border-amber-500/30 rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                     <span className="bg-amber-500 text-slate-950 font-black text-xs px-2.5 py-1 rounded-lg">
                       아침 06시 출발조
                     </span>
-                    <span className="text-xs font-bold text-amber-300">
-                      담당: [{selectedDayData.departureTeamDepartment || '현장대응단'}]
-                    </span>
+                    {!isEditingDepDept ? (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-black text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
+                          출발 담당: [{selectedDayData.departureTeamDepartment || '현장대응단'}]
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInlineDepDept(selectedDayData.departureTeamDepartment || '현장대응단');
+                            setIsEditingDepDept(true);
+                          }}
+                          className="text-[11px] text-amber-400 hover:text-amber-200 underline font-bold"
+                        >
+                          ✏️ 부서 직접 입력/수정
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-1.5 animate-in fade-in duration-150">
+                        <input
+                          type="text"
+                          value={inlineDepDept}
+                          onChange={(e) => setInlineDepDept(e.target.value)}
+                          placeholder="출발 담당 부서 직접 입력"
+                          className="bg-slate-900 border border-amber-500/60 rounded-lg px-2.5 py-1 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-amber-500 w-44"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveTeamDept('departure', inlineDepDept)}
+                          className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-2.5 py-1 rounded-lg shadow transition"
+                        >
+                          저장
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingDepDept(false)}
+                          className="text-xs text-slate-400 hover:text-slate-200 px-1"
+                        >
+                          취소
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <span className="text-xs text-slate-400 font-semibold">정원 2명</span>
                 </div>
@@ -974,14 +1036,52 @@ export default function GeojeTransportView() {
 
               {/* 2. Return Shift (저녁 18시 복귀조) */}
               <div className="bg-slate-800/70 border border-blue-500/30 rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                     <span className="bg-blue-500 text-slate-950 font-black text-xs px-2.5 py-1 rounded-lg">
                       저녁 18시 복귀조
                     </span>
-                    <span className="text-xs font-bold text-blue-300">
-                      담당: [{selectedDayData.returnTeamDepartment || '소방행정과'}]
-                    </span>
+                    {!isEditingRetDept ? (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-black text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/30">
+                          복귀 담당: [{selectedDayData.returnTeamDepartment || '소방행정과'}]
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInlineRetDept(selectedDayData.returnTeamDepartment || '소방행정과');
+                            setIsEditingRetDept(true);
+                          }}
+                          className="text-[11px] text-blue-400 hover:text-blue-200 underline font-bold"
+                        >
+                          ✏️ 부서 직접 입력/수정
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-1.5 animate-in fade-in duration-150">
+                        <input
+                          type="text"
+                          value={inlineRetDept}
+                          onChange={(e) => setInlineRetDept(e.target.value)}
+                          placeholder="복귀 담당 부서 직접 입력"
+                          className="bg-slate-900 border border-blue-500/60 rounded-lg px-2.5 py-1 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-blue-500 w-44"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveTeamDept('return', inlineRetDept)}
+                          className="bg-blue-500 hover:bg-blue-400 text-slate-950 font-black text-xs px-2.5 py-1 rounded-lg shadow transition"
+                        >
+                          저장
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingRetDept(false)}
+                          className="text-xs text-slate-400 hover:text-slate-200 px-1"
+                        >
+                          취소
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <span className="text-xs text-slate-400 font-semibold">정원 2명</span>
                 </div>
