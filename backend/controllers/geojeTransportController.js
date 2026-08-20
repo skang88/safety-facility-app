@@ -1,7 +1,9 @@
 const GeojeTransport = require('../models/GeojeTransport');
 
-// Seed default sample data if database is empty or missing target dates
+let isSeeded = false;
+
 const seedInitialDataIfNeeded = async () => {
+  if (isSeeded) return;
   try {
     const count = await GeojeTransport.countDocuments();
     if (count === 0) {
@@ -48,15 +50,18 @@ const seedInitialDataIfNeeded = async () => {
       await GeojeTransport.insertMany(sampleEntries);
       console.log('Geoje Transport sample data seeded successfully');
     }
+    isSeeded = true;
   } catch (err) {
     console.error('Error seeding Geoje transport data:', err);
   }
 };
 
-// Get monthly transport rosters
+// Get monthly transport rosters (ultra-fast lean query)
 exports.getMonthlyRoster = async (req, res) => {
   try {
-    await seedInitialDataIfNeeded();
+    if (!isSeeded) {
+      await seedInitialDataIfNeeded();
+    }
     const { year, month } = req.query;
 
     let query = {};
@@ -66,7 +71,7 @@ exports.getMonthlyRoster = async (req, res) => {
       query.date = regex;
     }
 
-    const rosters = await GeojeTransport.find(query).sort({ date: 1 });
+    const rosters = await GeojeTransport.find(query).sort({ date: 1 }).lean();
     res.json({ success: true, data: rosters });
   } catch (err) {
     console.error('Error fetching rosters:', err);

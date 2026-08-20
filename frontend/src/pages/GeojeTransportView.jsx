@@ -283,16 +283,28 @@ export default function GeojeTransportView() {
     setIsEditingRetDept(false);
   };
 
-  // Direct team department update handler (DB sync)
+  // Direct team department update handler (Optimistic Instant 0ms + DB sync)
   const handleSaveTeamDept = async (shiftType, newDeptName) => {
     if (!selectedDateStr || !newDeptName || !newDeptName.trim()) return;
     const trimmedDept = newDeptName.trim();
+
+    // 1. Instant Optimistic Local Update
+    const currentDay = { ...selectedDayData };
     if (shiftType === 'departure') {
+      currentDay.departureTeamDepartment = trimmedDept;
       setIsEditingDepDept(false);
     } else {
+      currentDay.returnTeamDepartment = trimmedDept;
       setIsEditingRetDept(false);
     }
 
+    setRosterMap(prev => ({
+      ...prev,
+      [selectedDateStr]: currentDay
+    }));
+    showToast(`⚡ 담당 부서가 '${trimmedDept}'(으)로 즉시 변경되었습니다.`);
+
+    // 2. Background DB Async Save
     try {
       const response = await axios.put(`${API_BASE_URL}/meta/${selectedDateStr}`, {
         [shiftType === 'departure' ? 'departureTeamDepartment' : 'returnTeamDepartment']: trimmedDept
@@ -304,19 +316,10 @@ export default function GeojeTransportView() {
           ...prev,
           [selectedDateStr]: updatedDayData
         }));
-        showToast(`담당 부서가 DB에 '${trimmedDept}'(으)로 변경 및 공유되었습니다.`);
-        return;
       }
     } catch (err) {
       console.warn('API meta update fallback:', err);
     }
-
-    // Fallback if offline
-    const currentDay = { ...selectedDayData };
-    if (shiftType === 'departure') currentDay.departureTeamDepartment = trimmedDept;
-    else currentDay.returnTeamDepartment = trimmedDept;
-    await updateRosterData(selectedDateStr, currentDay);
-    showToast(`담당 부서가 '${trimmedDept}'(으)로 변경되었습니다.`);
   };
 
   const selectedDayData = useMemo(() => {
@@ -362,7 +365,7 @@ export default function GeojeTransportView() {
     }
   };
 
-  // Submit volunteer slot registration directly to MongoDB DB
+  // Submit volunteer slot registration (Optimistic instant response + DB sync)
   const handleSaveSlot = async (e) => {
     e.preventDefault();
     if (!editingSlotInfo || !selectedDateStr) return;
@@ -385,34 +388,7 @@ export default function GeojeTransportView() {
       note: formNote.trim()
     };
 
-    // Save directly to MongoDB API
-    try {
-      const response = await axios.post(`${API_BASE_URL}/slot/${selectedDateStr}`, {
-        shiftType,
-        slotIndex,
-        department: newSlot.department,
-        rank: newSlot.rank,
-        name: newSlot.name,
-        phone: newSlot.phone,
-        note: newSlot.note,
-        teamDepartment: formTeamDept
-      });
-
-      if (response.data && response.data.success && response.data.data) {
-        const dbUpdatedRoster = response.data.data;
-        setRosterMap(prev => ({
-          ...prev,
-          [selectedDateStr]: dbUpdatedRoster
-        }));
-        showToast('✨ DB 저장이 완료되었습니다! 다른 사용자에게 실시간 공유됩니다.');
-        setEditingSlotInfo(null);
-        return;
-      }
-    } catch (err) {
-      console.warn('Backend API save slot failed, using offline fallback:', err);
-    }
-
-    // Offline fallback
+    // 1. Instant Optimistic Local Update (0ms delay!)
     const currentDay = { ...selectedDayData };
     let depTeam = [...(currentDay.departureTeam || [])];
     let retTeam = [...(currentDay.returnTeam || [])];
@@ -431,15 +407,58 @@ export default function GeojeTransportView() {
       currentDay.returnTeam = retTeam;
     }
 
-    await updateRosterData(selectedDateStr, currentDay);
+    setRosterMap(prev => ({
+      ...prev,
+      [selectedDateStr]: currentDay
+    }));
     setEditingSlotInfo(null);
-    showToast('✨ 자원 신청/수정이 완료되었습니다!');
+    showToast('⚡ 신청이 즉시 등록되었습니다! (DB 동기화 진행중...)');
+
+    // 2. Background DB Async Save
+    try {
+      const response = await axios.post(`${API_BASE_URL}/slot/${selectedDateStr}`, {
+        shiftType,
+        slotIndex,
+        department: newSlot.department,
+        rank: newSlot.rank,
+        name: newSlot.name,
+        phone: newSlot.phone,
+        note: newSlot.note,
+        teamDepartment: formTeamDept
+      });
+
+      if (response.data && response.data.success && response.data.data) {
+        const dbUpdatedRoster = response.data.data;
+        setRosterMap(prev => ({
+          ...prev,
+          [selectedDateStr]: dbUpdatedRoster
+        }));
+        showToast('✨ DB 저장 완료! 전체 사용자에게 실시간 공유됩니다.');
+      }
+    } catch (err) {
+      console.warn('Backend API save slot warning:', err);
+    }
   };
 
-  // Cancel/Remove volunteer slot directly in MongoDB DB
+  // Cancel/Remove volunteer slot (Optimistic instant response + DB sync)
   const handleCancelSlot = async (shiftType, slotIndex) => {
     if (!window.confirm('정말로 자원 신청을 취소하시겠습니까?')) return;
 
+    // 1. Instant Optimistic Local Update (0ms delay!)
+    const currentDay = { ...selectedDayData };
+    if (shiftType === 'departure') {
+      currentDay.departureTeam = (currentDay.departureTeam || []).filter(s => s.slotIndex !== slotIndex);
+    } else {
+      currentDay.returnTeam = (currentDay.returnTeam || []).filter(s => s.slotIndex !== slotIndex);
+    }
+
+    setRosterMap(prev => ({
+      ...prev,
+      [selectedDateStr]: currentDay
+    }));
+    showToast('⚡ 신청 내역이 즉시 삭제되었습니다.');
+
+    // 2. Background DB Async Cancel
     try {
       const response = await axios.post(`${API_BASE_URL}/cancel/${selectedDateStr}`, { shiftType, slotIndex });
       if (response.data && response.data.success && response.data.data) {
@@ -448,22 +467,10 @@ export default function GeojeTransportView() {
           ...prev,
           [selectedDateStr]: dbUpdatedRoster
         }));
-        showToast('신청 내역이 DB에서 정상 취소되었습니다.');
-        return;
       }
     } catch (err) {
       console.warn('Backend cancel slot API warning:', err);
     }
-
-    const currentDay = { ...selectedDayData };
-    if (shiftType === 'departure') {
-      currentDay.departureTeam = (currentDay.departureTeam || []).filter(s => s.slotIndex !== slotIndex);
-    } else {
-      currentDay.returnTeam = (currentDay.returnTeam || []).filter(s => s.slotIndex !== slotIndex);
-    }
-
-    await updateRosterData(selectedDateStr, currentDay);
-    showToast('신청 내역이 취소되었습니다.');
   };
 
   // Copy formatted roster string to clipboard (for KakaoTalk / SMS)
