@@ -4,7 +4,7 @@ const VolunteerSlotSchema = new mongoose.Schema({
   slotIndex: {
     type: Number,
     required: true,
-    enum: [0, 1]
+    min: 0
   },
   department: {
     type: String,

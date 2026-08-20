@@ -38,9 +38,9 @@ exports.getDayRoster = async (req, res) => {
     if (!roster) {
       roster = {
         date,
-        departureTeamDepartment: '현장대응단',
+        departureTeamDepartment: '미지정',
         departureTeam: [],
-        returnTeamDepartment: '소방행정과',
+        returnTeamDepartment: '미지정',
         returnTeam: [],
         generalNotes: ''
       };
@@ -68,9 +68,9 @@ exports.upsertSlot = async (req, res) => {
     if (!roster) {
       roster = new GeojeTransport({
         date,
-        departureTeamDepartment: shiftType === 'departure' && teamDepartment ? teamDepartment : '현장대응단',
+        departureTeamDepartment: shiftType === 'departure' && teamDepartment ? teamDepartment : '미지정',
         departureTeam: [],
-        returnTeamDepartment: shiftType === 'return' && teamDepartment ? teamDepartment : '소방행정과',
+        returnTeamDepartment: shiftType === 'return' && teamDepartment ? teamDepartment : '미지정',
         returnTeam: [],
         generalNotes: ''
       });
@@ -158,9 +158,9 @@ exports.updateRosterMeta = async (req, res) => {
     if (!roster) {
       roster = new GeojeTransport({
         date,
-        departureTeamDepartment: departureTeamDepartment || '현장대응단',
+        departureTeamDepartment: departureTeamDepartment || '미지정',
         departureTeam: [],
-        returnTeamDepartment: returnTeamDepartment || '소방행정과',
+        returnTeamDepartment: returnTeamDepartment || '미지정',
         returnTeam: [],
         generalNotes: generalNotes || ''
       });
