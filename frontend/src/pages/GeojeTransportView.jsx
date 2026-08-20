@@ -25,10 +25,14 @@ import {
   X,
   Sparkles,
   Info,
-  CalendarCheck
+  CalendarCheck,
+  RefreshCw,
+  Database
 } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:5000/api/geoje-transport';
+const API_BASE_URL = typeof window !== 'undefined' && window.location.hostname 
+  ? `http://${window.location.hostname}:5000/api/geoje-transport` 
+  : 'http://localhost:5000/api/geoje-transport';
 
 const DEPARTMENTS = [
   '현장대응단',
@@ -46,12 +50,13 @@ const DEPARTMENTS = [
 ];
 
 const RANKS = [
+  '소방경',
   '소방위',
   '소방장',
-  '소방경',
   '소방교',
   '소방사',
   '소방령',
+  '소방정',
   '의용소방대원',
   '자원봉사자',
   '직접 입력'
@@ -145,35 +150,52 @@ export default function GeojeTransportView() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  // Fetch monthly rosters from API or LocalStorage
-  const fetchMonthlyRosters = async () => {
-    setLoading(true);
-    const localDataStr = localStorage.getItem(`geoje_transport_roster_${year}_${month}`);
-    let initialRosters = localDataStr ? JSON.parse(localDataStr) : { ...DEFAULT_SAMPLE_DATA };
-
+  // Fetch monthly rosters directly from MongoDB API
+  const fetchMonthlyRosters = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const response = await axios.get(`${API_BASE_URL}/monthly?year=${year}&month=${month}`);
       if (response.data && response.data.success && Array.isArray(response.data.data)) {
         const apiMap = {};
+        // Fill sample default structure if database is new
+        Object.keys(DEFAULT_SAMPLE_DATA).forEach(k => {
+          if (k.startsWith(`${year}-${String(month).padStart(2, '0')}`)) {
+            apiMap[k] = DEFAULT_SAMPLE_DATA[k];
+          }
+        });
+
+        // Overlay MongoDB database entries
         response.data.data.forEach(item => {
           apiMap[item.date] = item;
         });
-        const merged = { ...initialRosters, ...apiMap };
-        setRosterMap(merged);
-        localStorage.setItem(`geoje_transport_roster_${year}_${month}`, JSON.stringify(merged));
-      } else {
-        setRosterMap(initialRosters);
+
+        setRosterMap(apiMap);
+        localStorage.setItem(`geoje_transport_roster_${year}_${month}`, JSON.stringify(apiMap));
+        
+        if (!isSilent) {
+          showToast('🔄 MongoDB 데이터베이스 실시간 연동 및 명단 새로고침 완료!');
+        }
       }
     } catch (err) {
-      console.warn('Backend API connection failed, falling back to local storage:', err);
+      console.warn('Backend DB connection failed, using cached local data:', err);
+      const localDataStr = localStorage.getItem(`geoje_transport_roster_${year}_${month}`);
+      let initialRosters = localDataStr ? JSON.parse(localDataStr) : { ...DEFAULT_SAMPLE_DATA };
       setRosterMap(initialRosters);
+      if (!isSilent) {
+        showToast('⚠️ DB 서버 접속 대기 중 (오프라인 로컬 저장소 사용)');
+      }
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
+  // Real-time automatic polling every 10 seconds to share inputs across all devices
   useEffect(() => {
-    fetchMonthlyRosters();
+    fetchMonthlyRosters(true);
+    const pollInterval = setInterval(() => {
+      fetchMonthlyRosters(true);
+    }, 10000);
+    return () => clearInterval(pollInterval);
   }, [year, month]);
 
   // Save changes to state, localStorage, and API
@@ -261,18 +283,38 @@ export default function GeojeTransportView() {
     setIsEditingRetDept(false);
   };
 
-  // Direct team department update handler
+  // Direct team department update handler (DB sync)
   const handleSaveTeamDept = async (shiftType, newDeptName) => {
     if (!selectedDateStr || !newDeptName || !newDeptName.trim()) return;
-    const currentDay = { ...selectedDayData };
     const trimmedDept = newDeptName.trim();
     if (shiftType === 'departure') {
-      currentDay.departureTeamDepartment = trimmedDept;
       setIsEditingDepDept(false);
     } else {
-      currentDay.returnTeamDepartment = trimmedDept;
       setIsEditingRetDept(false);
     }
+
+    try {
+      const response = await axios.put(`${API_BASE_URL}/meta/${selectedDateStr}`, {
+        [shiftType === 'departure' ? 'departureTeamDepartment' : 'returnTeamDepartment']: trimmedDept
+      });
+
+      if (response.data && response.data.success && response.data.data) {
+        const updatedDayData = response.data.data;
+        setRosterMap(prev => ({
+          ...prev,
+          [selectedDateStr]: updatedDayData
+        }));
+        showToast(`담당 부서가 DB에 '${trimmedDept}'(으)로 변경 및 공유되었습니다.`);
+        return;
+      }
+    } catch (err) {
+      console.warn('API meta update fallback:', err);
+    }
+
+    // Fallback if offline
+    const currentDay = { ...selectedDayData };
+    if (shiftType === 'departure') currentDay.departureTeamDepartment = trimmedDept;
+    else currentDay.returnTeamDepartment = trimmedDept;
     await updateRosterData(selectedDateStr, currentDay);
     showToast(`담당 부서가 '${trimmedDept}'(으)로 변경되었습니다.`);
   };
@@ -312,7 +354,7 @@ export default function GeojeTransportView() {
     } else {
       setFormDept(defaultTeamDept);
       setFormCustomDept('');
-      setFormRank('소방위');
+      setFormRank('소방경');
       setFormCustomRank('');
       setFormName('');
       setFormPhone('');
@@ -320,7 +362,7 @@ export default function GeojeTransportView() {
     }
   };
 
-  // Submit volunteer slot registration
+  // Submit volunteer slot registration directly to MongoDB DB
   const handleSaveSlot = async (e) => {
     e.preventDefault();
     if (!editingSlotInfo || !selectedDateStr) return;
@@ -340,10 +382,37 @@ export default function GeojeTransportView() {
       rank: finalRank || '소방위',
       name: formName.trim(),
       phone: formPhone.trim(),
-      note: formNote.trim(),
-      updatedAt: new Date().toISOString()
+      note: formNote.trim()
     };
 
+    // Save directly to MongoDB API
+    try {
+      const response = await axios.post(`${API_BASE_URL}/slot/${selectedDateStr}`, {
+        shiftType,
+        slotIndex,
+        department: newSlot.department,
+        rank: newSlot.rank,
+        name: newSlot.name,
+        phone: newSlot.phone,
+        note: newSlot.note,
+        teamDepartment: formTeamDept
+      });
+
+      if (response.data && response.data.success && response.data.data) {
+        const dbUpdatedRoster = response.data.data;
+        setRosterMap(prev => ({
+          ...prev,
+          [selectedDateStr]: dbUpdatedRoster
+        }));
+        showToast('✨ DB 저장이 완료되었습니다! 다른 사용자에게 실시간 공유됩니다.');
+        setEditingSlotInfo(null);
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend API save slot failed, using offline fallback:', err);
+    }
+
+    // Offline fallback
     const currentDay = { ...selectedDayData };
     let depTeam = [...(currentDay.departureTeam || [])];
     let retTeam = [...(currentDay.returnTeam || [])];
@@ -363,30 +432,28 @@ export default function GeojeTransportView() {
     }
 
     await updateRosterData(selectedDateStr, currentDay);
-
-    // Call API endpoint
-    try {
-      await axios.post(`${API_BASE_URL}/slot/${selectedDateStr}`, {
-        shiftType,
-        slotIndex,
-        department: newSlot.department,
-        rank: newSlot.rank,
-        name: newSlot.name,
-        phone: newSlot.phone,
-        note: newSlot.note,
-        teamDepartment: formTeamDept
-      });
-    } catch (err) {
-      console.warn('Backend API save slot warning:', err);
-    }
-
     setEditingSlotInfo(null);
     showToast('✨ 자원 신청/수정이 완료되었습니다!');
   };
 
-  // Cancel/Remove volunteer slot
+  // Cancel/Remove volunteer slot directly in MongoDB DB
   const handleCancelSlot = async (shiftType, slotIndex) => {
     if (!window.confirm('정말로 자원 신청을 취소하시겠습니까?')) return;
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/cancel/${selectedDateStr}`, { shiftType, slotIndex });
+      if (response.data && response.data.success && response.data.data) {
+        const dbUpdatedRoster = response.data.data;
+        setRosterMap(prev => ({
+          ...prev,
+          [selectedDateStr]: dbUpdatedRoster
+        }));
+        showToast('신청 내역이 DB에서 정상 취소되었습니다.');
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend cancel slot API warning:', err);
+    }
 
     const currentDay = { ...selectedDayData };
     if (shiftType === 'departure') {
@@ -396,13 +463,6 @@ export default function GeojeTransportView() {
     }
 
     await updateRosterData(selectedDateStr, currentDay);
-
-    try {
-      await axios.post(`${API_BASE_URL}/cancel/${selectedDateStr}`, { shiftType, slotIndex });
-    } catch (err) {
-      console.warn('Backend cancel slot API warning:', err);
-    }
-
     showToast('신청 내역이 취소되었습니다.');
   };
 
@@ -507,6 +567,16 @@ export default function GeojeTransportView() {
           {/* Action buttons & Stats header */}
           <div className="flex items-center space-x-2 w-full md:w-auto justify-end">
             <button
+              onClick={() => fetchMonthlyRosters(false)}
+              disabled={loading}
+              className="flex items-center px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold rounded-xl border border-slate-700 shadow-md transition text-xs"
+              title="실시간 DB 새로고침"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1.5 text-emerald-400 ${loading ? 'animate-spin' : ''}`} />
+              실시간 DB 새로고침
+            </button>
+
+            <button
               onClick={() => handleOpenDayModal('2026-08-20')}
               className="flex items-center px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold rounded-xl shadow-lg hover:shadow-red-600/30 transition border border-red-400/30 text-sm"
             >
@@ -568,8 +638,8 @@ export default function GeojeTransportView() {
         {/* Navigation Bar */}
         <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-4 shadow-xl mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
           
-          {/* Month Navigation */}
-          <div className="flex items-center space-x-3">
+          {/* Month Navigation & Refresh */}
+          <div className="flex items-center space-x-3 flex-wrap gap-y-2">
             <button
               onClick={handlePrevMonth}
               className="p-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 transition border border-slate-600"
@@ -592,9 +662,19 @@ export default function GeojeTransportView() {
 
             <button
               onClick={handleToday}
-              className="px-3.5 py-2 rounded-xl bg-red-900/60 hover:bg-red-800 text-red-200 border border-red-700/50 text-xs font-bold transition ml-2"
+              className="px-3 py-2 rounded-xl bg-red-900/60 hover:bg-red-800 text-red-200 border border-red-700/50 text-xs font-bold transition ml-1"
             >
               오늘로 이동
+            </button>
+
+            <button
+              onClick={() => fetchMonthlyRosters(false)}
+              disabled={loading}
+              className="px-3.5 py-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 text-xs font-black transition flex items-center shadow-inner"
+              title="최신 DB 데이터 새로고침"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin text-emerald-400' : 'text-emerald-400'}`} />
+              실시간 새로고침
             </button>
           </div>
 
