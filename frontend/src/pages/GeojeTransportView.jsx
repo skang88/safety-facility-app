@@ -537,7 +537,6 @@ export default function GeojeTransportView() {
 
     const textToCopy = `[의령소방서 거제 폭우 현장동원 지정 현황]
 ■ 일자: ${formattedDate}
-■ 시간: 06:00 출발 ~ 18:00 종료(예정)
 ■ 담당: ${depDept}
 ■ 동원 인원(2명): ${depList}
 ■ 비고: ${dayData.generalNotes || '의령 ↔ 거제 현장동원'}`;
@@ -590,7 +589,7 @@ export default function GeojeTransportView() {
               </h1>
               <p className="text-xs sm:text-sm text-slate-300 mt-1 flex items-center gap-1.5 font-medium">
                 <Info className="w-4 h-4 text-red-400 shrink-0" />
-                <span>06:00 출발 ~ 18:00 종료(예정) 하루 2명 현장동원 지정 달력 (구조대 / 의령센터 / 부림센터 / 정곡센터)</span>
+                <span>의령소방서 거제 폭우현장 2명 동원 지정 달력 (구조대 / 의령센터 / 부림센터 / 정곡센터)</span>
               </p>
             </div>
           </div>
@@ -888,19 +887,17 @@ export default function GeojeTransportView() {
                         </span>
                       </div>
 
-                      {/* Single Daily Shift Box (06:00 출발 ~ 18:00 종료예정 2명) */}
+                      {/* Single Daily Shift Box */}
                       <div className={`mt-2 text-left rounded-xl p-2.5 border ${
                         isPastDate ? 'bg-slate-900/40 border-slate-800/60' : 'bg-slate-800/90 border-slate-700/90 shadow-inner'
                       }`}>
                         <div className="flex items-center justify-between text-[11px] mb-1.5">
-                          <span className={`font-extrabold flex items-center ${isPastDate ? 'text-slate-500' : 'text-amber-400'}`}>
-                            <Clock className="w-3.5 h-3.5 mr-1" /> 06:00~18:00
-                          </span>
-                          <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded border ${
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded border ${
                             isPastDate ? 'bg-slate-900 text-slate-500 border-slate-800' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
                           }`}>
-                            {dayData.departureTeamDepartment || '구조대'}
+                            🏢 {dayData.departureTeamDepartment || '구조대'}
                           </span>
+                          <span className="text-[10px] text-slate-400 font-bold">정원 2명</span>
                         </div>
                         <div className="space-y-1">
                           {[0, 1].map(slotIdx => {
@@ -972,11 +969,10 @@ export default function GeojeTransportView() {
 
                       <div className="space-y-1 text-xs">
                         <div className="flex items-center space-x-2">
-                          <span className="font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
-                            동원 (06:00 출발 ~ 18:00 종료)
+                          <span className="font-extrabold text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded border border-amber-500/30">
+                            담당: {dayData.departureTeamDepartment || '구조대'}
                           </span>
-                          <span className="font-bold text-white">담당: {dayData.departureTeamDepartment || '구조대'}</span>
-                          <span className="text-slate-300">/ 인원: {depList}</span>
+                          <span className="text-slate-300 font-bold">/ 인원: {depList}</span>
                         </div>
                       </div>
                     </div>
@@ -1037,18 +1033,18 @@ export default function GeojeTransportView() {
                 의령소방서 거제 현장동원 보고 문자 양식 Preview:
               </p>
               <div className="bg-slate-950 p-3 rounded-xl font-mono text-slate-300 text-[11px] leading-relaxed border border-slate-800 select-all">
-                {`${selectedDateStr.split('-')[1]}/${selectedDateStr.split('-')[2]} 동원(06:00~18:00) 담당 ${selectedDayData.departureTeamDepartment || '구조대'} / 인원 ${(selectedDayData.departureTeam || []).map(s => s.name).join(', ') || '동원가능'}`}
+                {`${selectedDateStr.split('-')[1]}/${selectedDateStr.split('-')[2]} 현장동원 담당: ${selectedDayData.departureTeamDepartment || '구조대'} / 인원: ${(selectedDayData.departureTeam || []).map(s => s.name).join(', ') || '동원가능'}`}
               </div>
             </div>
 
-            {/* Shift Slot Cards (단일 06:00 출발 ~ 18:00 종료예정 2명 동원조) */}
+            {/* Shift Slot Cards */}
             <div className="mt-6 space-y-6">
               
               <div className="bg-slate-800/70 border border-amber-500/30 rounded-2xl p-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
                   <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                     <span className="bg-amber-500 text-slate-950 font-black text-xs px-3 py-1 rounded-lg">
-                      06:00 출발 ~ 18:00 종료(예정) 동원조
+                      현장동원 지정
                     </span>
                     {!isEditingDepDept ? (
                       <div className="flex items-center space-x-2">
@@ -1172,37 +1168,18 @@ export default function GeojeTransportView() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                  {/* Name with Combobox selection */}
+                  {/* Name Input */}
                   <div>
-                    <label className="block text-slate-300 font-bold mb-1">성명 <span className="text-red-400">* (콤보박스 선택 가능)</span></label>
-                    <div className="flex gap-1.5">
-                      <select
-                        onChange={(e) => {
-                          if (e.target.value !== 'MANUAL') {
-                            setFormName(e.target.value);
-                          }
-                        }}
-                        className="bg-slate-900 border border-slate-700 rounded-xl px-2 py-2 text-xs font-bold text-amber-300 outline-none focus:ring-2 focus:ring-red-500 shrink-0 w-28 cursor-pointer"
-                      >
-                        <option value="MANUAL">📋 선택...</option>
-                        <option value="홍길동">홍길동</option>
-                        <option value="김철수">김철수</option>
-                        <option value="이영희">이영희</option>
-                        <option value="박민수">박민수</option>
-                        <option value="정태호">정태호</option>
-                        <option value="강신웅">강신웅</option>
-                        <option value="최준혁">최준혁</option>
-                        <option value="윤동주">윤동주</option>
-                      </select>
-                      <input
-                        type="text"
-                        required
-                        value={formName}
-                        onChange={(e) => setFormName(e.target.value)}
-                        placeholder="성명 직접 입력"
-                        className="flex-1 bg-slate-900 border border-red-500/60 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-red-500 font-bold"
-                      />
-                    </div>
+                    <label className="block text-slate-300 font-bold mb-1">성명 <span className="text-red-400">*</span></label>
+                    <input
+                      type="text"
+                      required
+                      autoFocus
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      placeholder="성명 입력 (예: 홍길동)"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-red-500 outline-none font-bold text-sm"
+                    />
                   </div>
 
                   {/* Phone */}
