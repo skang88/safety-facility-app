@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
 import { 
   Calendar as CalendarIcon, 
@@ -27,7 +27,9 @@ import {
   Info,
   CalendarCheck,
   RefreshCw,
-  Database
+  Database,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 const API_BASE_URL = '/api/geoje-transport';
@@ -114,6 +116,10 @@ export default function GeojeTransportView() {
   const [isEditingDepDept, setIsEditingDepDept] = useState(false);
   const [isEditingRetDept, setIsEditingRetDept] = useState(false);
 
+  // Ref to today's cell for auto-scrolling
+  const todayRef = useRef(null);
+  const [hidePastDays, setHidePastDays] = useState(false);
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
@@ -167,6 +173,16 @@ export default function GeojeTransportView() {
     return () => clearInterval(pollInterval);
   }, [year, month]);
 
+  // Auto scroll to today on page load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (todayRef.current) {
+        todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Save changes to state, localStorage, and API
   const updateRosterData = async (dateStr, updatedDayData) => {
     const updatedMap = {
@@ -196,6 +212,11 @@ export default function GeojeTransportView() {
   };
   const handleToday = () => {
     setCurrentDate(new Date(2026, 7, 20)); // Jump to current active date (2026-08-20)
+    setTimeout(() => {
+      if (todayRef.current) {
+        todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
   };
 
   // Days matrix for calendar
@@ -206,7 +227,7 @@ export default function GeojeTransportView() {
     const startDayOfWeek = firstDayOfMonth.getDay(); // 0 = Sun, 1 = Mon, etc.
     const daysInMonth = lastDayOfMonth.getDate();
 
-    const days = [];
+    let days = [];
 
     // Padding days from previous month
     const prevMonthLastDay = new Date(year, month - 1, 0).getDate();
@@ -239,8 +260,14 @@ export default function GeojeTransportView() {
       });
     }
 
+    // If hidePastDays is true, filter out full weeks before August 16th (current week Sunday)
+    if (hidePastDays && year === 2026 && month === 8) {
+      // 2026-08-16 is current week's Sunday. Slice off the first 2 full rows (14 days)
+      days = days.filter((d, index) => index >= 14);
+    }
+
     return days;
-  }, [year, month]);
+  }, [year, month, hidePastDays]);
 
   // Open date details / registration modal
   const handleOpenDayModal = (dateStr) => {
@@ -625,6 +652,33 @@ export default function GeojeTransportView() {
               <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin text-emerald-400' : 'text-emerald-400'}`} />
               실시간 새로고침
             </button>
+
+            {/* Past Days Toggle */}
+            <button
+              onClick={() => {
+                const nextVal = !hidePastDays;
+                setHidePastDays(nextVal);
+                showToast(nextVal ? '👁️ 지난 주 날짜(1일~15일)가 숨김 처리 되었습니다.' : '📅 전체 날짜(1일~31일)가 표시됩니다.');
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition flex items-center border ${
+                hidePastDays
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow'
+                  : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
+              }`}
+              title="지난 날짜(1일~15일) 숨기기 / 전체 날짜 보기"
+            >
+              {hidePastDays ? (
+                <>
+                  <EyeOff className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
+                  지난 날짜 숨김 (8/16~)
+                </>
+              ) : (
+                <>
+                  <Eye className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+                  전체 날짜 표시 (1일~)
+                </>
+              )}
+            </button>
           </div>
 
           {/* Department Filter & Search */}
@@ -712,6 +766,7 @@ export default function GeojeTransportView() {
                 const isComplete = totalCount >= 4;
 
                 const isToday = cell.dateStr === '2026-08-20';
+                const isPastDate = cell.dateStr && cell.dateStr < '2026-08-20';
                 const isSunday = cell.dayOfWeek === 0;
                 const isSaturday = cell.dayOfWeek === 6;
 
@@ -731,11 +786,15 @@ export default function GeojeTransportView() {
                 return (
                   <div
                     key={idx}
+                    ref={isToday ? todayRef : null}
+                    id={isToday ? 'today-cell' : undefined}
                     onClick={() => handleOpenDayModal(cell.dateStr)}
-                    className={`bg-slate-900 p-2.5 min-h-[150px] transition-all hover:bg-slate-800 cursor-pointer flex flex-col justify-between group relative border ${
+                    className={`p-2.5 min-h-[150px] transition-all cursor-pointer flex flex-col justify-between group relative border ${
                       isToday 
-                        ? 'ring-2 ring-red-500 bg-red-950/20 border-red-500/50' 
-                        : 'border-slate-800/80 hover:border-slate-600'
+                        ? 'ring-2 ring-red-500 bg-red-950/30 border-red-500/60 shadow-lg' 
+                        : isPastDate 
+                          ? 'bg-slate-950/60 text-slate-500 opacity-60 border-slate-850 hover:bg-slate-900/80'
+                          : 'bg-slate-900 hover:bg-slate-800 border-slate-800/80 hover:border-slate-600'
                     }`}
                   >
                     {/* Top Row: Date Number & Badge Status */}
@@ -744,33 +803,41 @@ export default function GeojeTransportView() {
                         <span className={`text-sm font-black rounded-lg px-2 py-0.5 ${
                           isToday 
                             ? 'bg-red-600 text-white shadow' 
-                            : isSunday 
-                              ? 'text-red-400 font-bold' 
-                              : isSaturday 
-                                ? 'text-blue-400 font-bold' 
-                                : 'text-slate-200'
+                            : isPastDate
+                              ? 'text-slate-500 font-bold'
+                              : isSunday 
+                                ? 'text-red-400 font-bold' 
+                                : isSaturday 
+                                  ? 'text-blue-400 font-bold' 
+                                  : 'text-slate-200'
                         }`}>
                           {cell.dayNum}일
                         </span>
 
                         <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
-                          isComplete 
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
-                            : totalCount > 0 
-                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' 
-                              : 'bg-slate-800 text-slate-400 border-slate-700'
+                          isPastDate
+                            ? 'bg-slate-800/60 text-slate-500 border-slate-700/50'
+                            : isComplete 
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                              : totalCount > 0 
+                                ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' 
+                                : 'bg-slate-800 text-slate-400 border-slate-700'
                         }`}>
-                          {isComplete ? '완료 (4/4)' : `${totalCount}/4명 모집중`}
+                          {isPastDate ? (totalCount > 0 ? `종료 (${totalCount}/4)` : '지원 마감') : isComplete ? '완료 (4/4)' : `${totalCount}/4명 모집중`}
                         </span>
                       </div>
 
                       {/* Departure Team Box (아침 06시 출발조 2명) */}
-                      <div className="mt-2 text-left bg-slate-800/80 rounded-xl p-2 border border-slate-700/80">
+                      <div className={`mt-2 text-left rounded-xl p-2 border ${
+                        isPastDate ? 'bg-slate-900/40 border-slate-800/60' : 'bg-slate-800/80 border-slate-700/80'
+                      }`}>
                         <div className="flex items-center justify-between text-[11px] mb-1">
-                          <span className="font-extrabold text-amber-400 flex items-center">
+                          <span className={`font-extrabold flex items-center ${isPastDate ? 'text-slate-500' : 'text-amber-400'}`}>
                             <Clock className="w-3 h-3 mr-1" /> 06시 출발
                           </span>
-                          <span className="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-1.5 py-0.2 rounded border border-amber-500/30">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
+                            isPastDate ? 'bg-slate-900 text-slate-500 border-slate-800' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                          }`}>
                             {dayData.departureTeamDepartment || '현장대응단'}
                           </span>
                         </div>
@@ -780,9 +847,11 @@ export default function GeojeTransportView() {
                             return (
                               <div key={slotIdx} className="text-[11px] text-slate-200 truncate flex items-center justify-between">
                                 {slot ? (
-                                  <span className="font-bold text-slate-100">
+                                  <span className={`font-bold ${isPastDate ? 'text-slate-400' : 'text-slate-100'}`}>
                                     {slot.name}
                                   </span>
+                                ) : isPastDate ? (
+                                  <span className="text-slate-600 font-medium text-[10px] italic">- 마감</span>
                                 ) : (
                                   <span className="text-slate-500 font-medium text-[10px] italic">+ 자원 지원 가능</span>
                                 )}
@@ -793,12 +862,16 @@ export default function GeojeTransportView() {
                       </div>
 
                       {/* Return Team Box (저녁 18시 복귀조 2명) */}
-                      <div className="mt-1.5 text-left bg-slate-800/80 rounded-xl p-2 border border-slate-700/80">
+                      <div className={`mt-1.5 text-left rounded-xl p-2 border ${
+                        isPastDate ? 'bg-slate-900/40 border-slate-800/60' : 'bg-slate-800/80 border-slate-700/80'
+                      }`}>
                         <div className="flex items-center justify-between text-[11px] mb-1">
-                          <span className="font-extrabold text-blue-400 flex items-center">
+                          <span className={`font-extrabold flex items-center ${isPastDate ? 'text-slate-500' : 'text-blue-400'}`}>
                             <Clock className="w-3 h-3 mr-1" /> 18시 복귀
                           </span>
-                          <span className="text-[10px] bg-blue-500/20 text-blue-300 font-bold px-1.5 py-0.2 rounded border border-blue-500/30">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
+                            isPastDate ? 'bg-slate-900 text-slate-500 border-slate-800' : 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                          }`}>
                             {dayData.returnTeamDepartment || '소방행정과'}
                           </span>
                         </div>
@@ -808,9 +881,11 @@ export default function GeojeTransportView() {
                             return (
                               <div key={slotIdx} className="text-[11px] text-slate-200 truncate flex items-center justify-between">
                                 {slot ? (
-                                  <span className="font-bold text-slate-100">
+                                  <span className={`font-bold ${isPastDate ? 'text-slate-400' : 'text-slate-100'}`}>
                                     {slot.name}
                                   </span>
+                                ) : isPastDate ? (
+                                  <span className="text-slate-600 font-medium text-[10px] italic">- 마감</span>
                                 ) : (
                                   <span className="text-slate-500 font-medium text-[10px] italic">+ 자원 지원 가능</span>
                                 )}
@@ -852,7 +927,7 @@ export default function GeojeTransportView() {
             </h3>
 
             <div className="divide-y divide-slate-700/60 border border-slate-700 rounded-xl overflow-hidden">
-              {Object.keys(rosterMap).sort().map(dateKey => {
+              {Object.keys(rosterMap).filter(d => !hidePastDays || d >= '2026-08-16').sort().map(dateKey => {
                 const dayData = rosterMap[dateKey];
                 const dateObj = new Date(dateKey);
                 const dayOfWeekStr = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
