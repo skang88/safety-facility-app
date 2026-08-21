@@ -28,11 +28,11 @@ import ResetPassword from './pages/ResetPassword';
 
 // Scalable Module Navigation Registry
 const MODULE_ROUTES = [
-  { path: '/geoje-transport', label: '의령소방서 거제 폭우 현장동원', icon: Calendar, publicOpen: true },
   { path: '/', label: '통합 대시보드', icon: LayoutDashboard, exact: true },
   { path: '/list', label: '수난안전 시설', icon: ListChecks },
   { path: '/fire-water', label: '소방용수 관리', icon: Flame },
   { path: '/vehicle', label: '소방차량 관리', icon: Truck },
+  { path: '/geoje-transport', label: '의령소방서 거제 폭우 현장동원', icon: Calendar, publicOpen: true },
 ];
 
 function App() {
@@ -98,11 +98,11 @@ function App() {
     );
   }
 
-  // If user is not authenticated and trying to access a private page, redirect to geoje-transport or login
+  // If user is not authenticated and trying to access a private page, redirect to login
   if (!token && !isPublicAuthPath) {
     return (
       <Routes>
-        <Route path="*" element={<Navigate to="/geoje-transport" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
   }
